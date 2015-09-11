@@ -15,6 +15,7 @@ using Update;
 using Excel = Microsoft.Office.Interop.Excel;
 using System.Reflection;
 using System.Xml.Linq;
+using System.Collections;
 
 namespace albatross_desktop
 {
@@ -23,13 +24,20 @@ namespace albatross_desktop
         Excel.Workbook wbb = null;
         Excel.Application eApp = null;
         WebBrowser webBrowser1 = null;
-        DataSet ds = new DataSet();
+        //DataSet ds = new DataSet();
+        public string iniFile = System.IO.Directory.GetCurrentDirectory() + "\\conf.ini";
+
+        #region "datagridview keyboard operations"
+        ArrayList copyedRowIndexes = new ArrayList();
+        #endregion
 
         public MainForm()
         {
             InitializeComponent();
             //checkUpdate();
-            //processXml(@"d:\test.xml");
+            dgview.ShowCellToolTips = true;
+            dgview.CellMouseEnter += new DataGridViewCellEventHandler(dgview_CellMouseEnter);
+            processFile(@"C:\Users\money_2\Desktop\type_copys_main.xml");
         }
 
         public void checkUpdate()
@@ -64,6 +72,7 @@ namespace albatross_desktop
             {
                 string sFileName = opendlg.FileName;
                 processFile(sFileName);
+                this.WindowState = FormWindowState.Maximized;
             }
         }
 
@@ -84,14 +93,13 @@ namespace albatross_desktop
 
         private int readXml(string fname)
         {
-            ds.ReadXml(fname);
-            dgview.DataSource = ds.Tables[0];
-            //dgview.Rows.Clear();
-            //dgview.Columns.Clear();
+            //ds.ReadXml(fname);
+            //dgview.DataSource = ds.Tables[0];
+            dgview.Rows.Clear();
+            dgview.Columns.Clear();
             dgview.Dock = DockStyle.Fill;
             dgview.Visible = true;
-            //dgview.AllowUserToAddRows = true;
-            return 0;
+            //return 0;
             XDocument doc = XDocument.Load(fname);
             bool colFinish = false;
             foreach (var item in doc.Root.Elements())
@@ -158,7 +166,7 @@ namespace albatross_desktop
                     {
                         saveExcel03(FileName);
                     }
-                    
+
                 }
             }
             return;
@@ -166,7 +174,7 @@ namespace albatross_desktop
 
         private void saveXml(string fname)
         {
-            progressBar1.Visible = true;
+            /*progressBar1.Visible = true;
             ds.WriteXml(fname);
             for (int i = 0; i < ds.Tables[0].Rows.Count; i++)
             {
@@ -174,7 +182,34 @@ namespace albatross_desktop
             }
             MessageBox.Show("数据已经成功导出到<" + fname, ">导出完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
             progressBar1.Value = 0;
-            progressBar1.Visible = false;
+            progressBar1.Visible = false;*/
+            //1、创建XML对象
+            XDocument xdocument = new XDocument(
+                new XDeclaration("1.0", "utf-8", "yes"),
+                new XComment("提示"));
+            //2、创建跟节点
+            XElement eRoot = new XElement("basenode");
+            //添加到xdoc中
+            xdocument.Add(eRoot);
+            //3、添加子节点
+            for (int j = 0; j < dgview.Rows.Count; j++)
+            {
+                XElement ele1 = new XElement("node");
+                //ele1.Value = "内容1";
+                eRoot.Add(ele1);
+                for (int k = 0; k < dgview.Columns.Count; k++)
+                {
+                    //4、为ele1节点添加属性
+                    XAttribute attr = new XAttribute(dgview.Columns[k].HeaderText, dgview.Rows[j].Cells[k].Value.ToString());
+                    ele1.Add(attr);
+                }
+            }
+            //5、快速添加子节点方法
+            //eRoot.SetElementValue("子节点2", "内容2");
+            //6、快速添加属性
+            //ele1.SetAttributeValue("id", 12);
+            //7、最后保存到文件，也可以写入到流中。
+            xdocument.Save(fname);
         }
 
         private void saveExcel03(object obj)
@@ -342,7 +377,7 @@ namespace albatross_desktop
                 oCell.Value2 = "你好";*/
             }
             else
-            {   
+            {
                 MessageBox.Show(e.Url.ToString());
             }
         }
@@ -403,6 +438,7 @@ namespace albatross_desktop
             string[] s = (string[])e.Data.GetData(DataFormats.FileDrop, false);
             fname = s[0];
             processFile(fname);
+            this.WindowState = FormWindowState.Maximized;
         }
 
         private void MainForm_DragEnter(object sender, DragEventArgs e)
@@ -415,13 +451,88 @@ namespace albatross_desktop
 
         private void AddRowToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("to do");
+            dgview.Rows.Add();
         }
 
         private void ConfigToolStripMenuItem1_Click(object sender, EventArgs e)
         {
-            ConfigForm confdlg = new ConfigForm();
+            ConfigForm confdlg = new ConfigForm(this);
             confdlg.ShowDialog();
+        }
+
+        private void MainForm_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Modifiers == Keys.Control && e.KeyCode == Keys.C)
+            {
+                if (dgview.SelectedRows.Count > 0)
+                {
+                    //copy rows
+                    copyedRowIndexes.Clear();
+                    for (int i = 0; i < dgview.SelectedRows.Count; i++)
+                    {
+                        copyedRowIndexes.Add(dgview.SelectedRows[i].Index);
+                    }
+                    statusInfo.Text = (dgview.SelectedRows.Count.ToString() + "rows copied");
+                    dgview.ClearSelection();
+                }
+            }
+            else if (e.Modifiers == Keys.Control && e.KeyCode == Keys.V)
+            {
+                if (copyedRowIndexes.Count > 0)
+                {
+                    statusInfo.Text = ("will paste " + copyedRowIndexes.Count.ToString() + "rows");
+                    for (int i = 0; i < copyedRowIndexes.Count; i++)
+                    {
+                        int newindex = dgview.Rows.Add();
+                        for (int icol = 0; icol < dgview.Columns.Count; icol++)
+                        {
+                            dgview.Rows[newindex].Cells[icol].Value = dgview.Rows[int.Parse(copyedRowIndexes[i].ToString())].Cells[icol].Value;
+                        }
+                        dgview.Rows[newindex].Selected = true;
+                    }
+                }
+            }
+            else if ((int)e.Modifiers == ((int)Keys.Control + (int)Keys.Alt) && e.KeyCode == Keys.D0)
+            {
+                statusInfo.Text = ("按下了Control + Alt + 0");
+            }
+        }
+
+        /*protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            switch (keyData)
+            {
+                case Keys.Right:
+                    MessageBox.Show("Right");
+                    break;
+                case Keys.Left:
+                    MessageBox.Show("Left");
+                    break;
+                case Keys.Up://方向键不反应
+                    MessageBox.Show("up");
+                    break;
+                case Keys.Down:
+                    MessageBox.Show("down");
+                    break;
+                case Keys.Space:
+                    MessageBox.Show("space");
+                    break;
+                case Keys.Enter:
+                    MessageBox.Show("enter");
+                    break;
+            }
+            return false;//如果要调用KeyDown,这里一定要返回false才行,否则只响应重写方法里的按键.
+            //这里调用一下父类方向,相当于调用普通的KeyDown事件.//所以按空格会弹出两个对话框
+            //return base.ProcessCmdKey(ref msg, keyData);
+        }*/
+
+        void dgview_CellMouseEnter(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.ColumnIndex < 0 || e.RowIndex < 0 || dgview.Rows.Count <= 0)
+            {
+                return;
+            }
+            dgview.Rows[e.RowIndex].Cells[e.ColumnIndex].ToolTipText = dgview.Columns[e.ColumnIndex].HeaderText;
         }
     }
 }
