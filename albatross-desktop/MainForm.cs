@@ -19,16 +19,44 @@ using System.Collections;
 
 namespace albatross_desktop
 {
+    enum LOGLEVEL
+    { 
+        INFO = 1,
+        WARN = 2,
+        ERROR = 3,
+    }
+    public struct CellValueChangeLog
+    {
+        public string oldval;
+        public string newval;
+        public CellValueChangeLog(string o, string n)
+        {
+            oldval = o;
+            newval = n;
+        }
+    }
     public partial class MainForm : Form
     {
+        //DataSet ds = new DataSet();
+        public string iniFile = System.IO.Directory.GetCurrentDirectory() + "\\conf.ini";
         Excel.Workbook wbb = null;
         Excel.Application eApp = null;
         WebBrowser webBrowser1 = null;
-        //DataSet ds = new DataSet();
-        public string iniFile = System.IO.Directory.GetCurrentDirectory() + "\\conf.ini";
+        string currFileName = null;
+        string logFile = System.IO.Directory.GetCurrentDirectory() + "\\errlog.txt";
+        FileStream fsFile = null;
+        StreamWriter swWriter = null;
+        StreamReader srReader = null;
+        LogForm logform;
 
         #region "datagridview keyboard operations"
-        ArrayList copyedRowIndexes = new ArrayList();
+        ArrayList copiedRowIndices = new ArrayList();
+        ArrayList copiedColIndices = new ArrayList();
+        Dictionary<int, ArrayList> copiedCellIndices = new Dictionary<int,ArrayList>();
+        Dictionary<int, ArrayList> cellValueChangeLog = new Dictionary<int, ArrayList>();//value member is CellValueChangeLog
+        ArrayList cellValueChangeLogList = new ArrayList();//member is cellValueChangeLog
+        ArrayList operationLogList = new ArrayList();//member is cellValueChangeLogList
+        int operationCurrentLogIndex = 0;
         #endregion
 
         public MainForm()
@@ -37,7 +65,12 @@ namespace albatross_desktop
             //checkUpdate();
             dgview.ShowCellToolTips = true;
             dgview.CellMouseEnter += new DataGridViewCellEventHandler(dgview_CellMouseEnter);
-            processFile(@"C:\Users\money_2\Desktop\type_copys_main.xml");
+            fsFile = new FileStream(logFile, FileMode.OpenOrCreate);
+            swWriter = new StreamWriter(fsFile);
+            srReader = new StreamReader(fsFile);
+            
+            currFileName = @"d:\\type_copys_main.xml";
+            processFile(currFileName);
         }
 
         public void checkUpdate()
@@ -71,6 +104,7 @@ namespace albatross_desktop
             if (opendlg.ShowDialog() == DialogResult.OK)
             {
                 string sFileName = opendlg.FileName;
+                currFileName = sFileName;
                 processFile(sFileName);
                 this.WindowState = FormWindowState.Maximized;
             }
@@ -429,6 +463,7 @@ namespace albatross_desktop
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
             CloseExcelApplication();
+            swWriter.Close();
         }
 
         private void MainForm_DragDrop(object sender, DragEventArgs e)
@@ -437,6 +472,7 @@ namespace albatross_desktop
             string fname = null;
             string[] s = (string[])e.Data.GetData(DataFormats.FileDrop, false);
             fname = s[0];
+            currFileName = fname;
             processFile(fname);
             this.WindowState = FormWindowState.Maximized;
         }
@@ -460,41 +496,208 @@ namespace albatross_desktop
             confdlg.ShowDialog();
         }
 
+        private void Log(LOGLEVEL level, string text)
+        {
+            if (level == LOGLEVEL.WARN)
+            {
+                statusInfo.ForeColor = Color.Green;
+            }
+            else if (level == LOGLEVEL.ERROR)
+            {
+                statusInfo.ForeColor = Color.Red;
+            }
+            else
+            {
+                statusInfo.ForeColor = Color.Black;
+            }
+            statusInfo.Text = text;
+            swWriter.WriteLine("[" + DateTime.Now.ToString() + "]" + text);
+        }
+        private void ClearLog()
+        {
+            statusInfo.ForeColor = Color.Black;
+            statusInfo.Text = "";
+        }
+        private string ArrayListToStr(ArrayList list)
+        {
+            list.Sort();
+            StringBuilder sb = new StringBuilder();
+            foreach (int m in list)
+            {
+                sb.Append(m.ToString() + " ");
+            }
+            return sb.ToString();
+        }
+        private string DictToStr(Dictionary<int, ArrayList> dict)
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach (KeyValuePair<int, ArrayList> kvp in dict)
+            {
+                sb.Append(kvp.Key + " : ");
+                foreach (int m in kvp.Value)
+                {
+                    sb.Append(m.ToString() + ",");
+                }
+                sb.Append("|");
+            }
+            sb.Remove(sb.Length - 1, 1);
+            return sb.ToString();
+        }
+        private bool isArrayListEquals(ArrayList a, ArrayList b)
+        {
+            if (a.Count != b.Count)
+            {
+                return false;
+            }
+            for (int i = 0; i < a.Count; i++)
+            {
+                if (!a[i].Equals(b[i]))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+        private void copyOperation()
+        {
+            ClearLog();
+            if (dgview.SelectedRows.Count > 0)
+            {
+                //copy rows
+                copiedRowIndices.Clear();
+                for (int i = 0; i < dgview.SelectedRows.Count; i++)
+                {
+                    copiedRowIndices.Add(dgview.SelectedRows[i].Index);
+                }
+                Log(LOGLEVEL.INFO, dgview.SelectedRows.Count.ToString() + "rows copied, row index in paste board: " + ArrayListToStr(copiedRowIndices));
+            }
+            else if (dgview.SelectedColumns.Count > 0)
+            {
+                //copy cols
+                Log(LOGLEVEL.INFO, dgview.SelectedColumns.Count.ToString());
+            }
+            else if (dgview.SelectedCells.Count > 0)
+            {
+                //copy cells
+                copiedCellIndices.Clear();
+                for (int i = 0; i < dgview.SelectedCells.Count; i++)
+                {
+                    if (copiedCellIndices.ContainsKey(dgview.SelectedCells[i].RowIndex))
+                    {
+                        copiedCellIndices[dgview.SelectedCells[i].RowIndex].Add(dgview.SelectedCells[i].ColumnIndex);
+                        copiedCellIndices[dgview.SelectedCells[i].RowIndex].Sort();
+                    }
+                    else
+                    {
+                        copiedCellIndices.Add(dgview.SelectedCells[i].RowIndex, new ArrayList() { dgview.SelectedCells[i].ColumnIndex });
+                    }
+                }
+                Log(LOGLEVEL.INFO, dgview.SelectedCells.Count.ToString() + "cells copied, cell index in paste board: " + DictToStr(copiedCellIndices));
+            }
+            dgview.ClearSelection();
+        }
+        private void pasteOperation()
+        {
+            ClearLog();
+            if (copiedRowIndices.Count > 0)
+            {
+                //paste copied rows
+                for (int i = 0; i < copiedRowIndices.Count; i++)
+                {
+                    int newindex = dgview.Rows.Add();
+                    for (int icol = 0; icol < dgview.Columns.Count; icol++)
+                    {
+                        dgview.Rows[newindex].Cells[icol].Value = dgview.Rows[int.Parse(copiedRowIndices[i].ToString())].Cells[icol].Value;
+                    }
+                    dgview.Rows[newindex].Selected = true;
+                }
+                Log(LOGLEVEL.INFO, copiedRowIndices.Count.ToString() + " rows pasted, row index in paste board: " + ArrayListToStr(copiedRowIndices));
+            }
+            else if (copiedColIndices.Count > 0)
+            {
+                //paste copied cols
+            }
+            else if (copiedCellIndices.Count > 0)
+            {
+                //paste copied cells
+                //check if copied cells can be pasted
+                int firstkey = 0;
+                foreach (KeyValuePair<int, ArrayList> kvp in copiedCellIndices)
+                {
+                    if (0 == firstkey)
+                    {
+                        firstkey = kvp.Key;
+                    }
+                    if (!isArrayListEquals(copiedCellIndices[kvp.Key], copiedCellIndices[firstkey]))
+                    {
+                        Log(LOGLEVEL.ERROR, "cells cant be pasted, should be square box, cell index in paste board: " + DictToStr(copiedCellIndices));
+                        return;
+                    }
+                }
+                //check if select a postion
+                if (dgview.SelectedCells.Count <= 0)
+                {
+                    Log(LOGLEVEL.ERROR, "should select paste position, cell index in paste board: " + DictToStr(copiedCellIndices));
+                    return;
+                }
+                //check if paste position valid, out of bound
+                int pasteStartRowDex = 999999;
+                int pasteStartColDex = 999999;
+                for (int i = 0; i < dgview.SelectedCells.Count; i++)
+                {
+                    //find first row index cell
+                    if (pasteStartRowDex > dgview.SelectedCells[i].RowIndex)
+                    {
+                        pasteStartRowDex = dgview.SelectedCells[i].RowIndex;
+                        pasteStartColDex = dgview.SelectedCells[i].ColumnIndex;
+                    }
+                }
+                if (pasteStartRowDex + copiedCellIndices.Count > dgview.Rows.Count || pasteStartColDex + copiedCellIndices[firstkey].Count > dgview.Columns.Count)
+                {
+                    Log(LOGLEVEL.ERROR, "out of bound, cell index in paste board: " + DictToStr(copiedCellIndices));
+                    return;
+                }
+                //start to paste cells
+                if (copiedCellIndices.Count == 1)
+                {
+                    foreach (KeyValuePair<int, ArrayList> kvp in copiedCellIndices)
+                    {
+                        if (kvp.Value.Count == 1)
+                        {
+                            //only one cell in source
+                            for (int i = 0; i < dgview.SelectedCells.Count; i++)
+                            {
+                                foreach (int m in kvp.Value)
+                                {
+                                    dgview.SelectedCells[i].Value = dgview.Rows[kvp.Key].Cells[m].Value;
+                                }
+                            }
+                            return;
+                        }
+                    }
+                }
+                int tmprowdex = 0;
+                foreach (KeyValuePair<int, ArrayList> kvp in copiedCellIndices)
+                {
+                    int tmpcoldex = 0;
+                    foreach (int m in kvp.Value)
+                    {
+                        dgview.Rows[pasteStartRowDex + tmprowdex].Cells[pasteStartColDex + tmpcoldex].Value = dgview.Rows[kvp.Key].Cells[m].Value;
+                        tmpcoldex++;
+                    }
+                    tmprowdex++;
+                }
+            }
+        }
         private void MainForm_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Modifiers == Keys.Control && e.KeyCode == Keys.C)
+            if (e.Modifiers == Keys.Control && e.KeyCode == Keys.C) //copy
             {
-                if (dgview.SelectedRows.Count > 0)
-                {
-                    //copy rows
-                    copyedRowIndexes.Clear();
-                    for (int i = 0; i < dgview.SelectedRows.Count; i++)
-                    {
-                        copyedRowIndexes.Add(dgview.SelectedRows[i].Index);
-                    }
-                    statusInfo.Text = (dgview.SelectedRows.Count.ToString() + "rows copied");
-                    dgview.ClearSelection();
-                }
+                copyOperation();
             }
-            else if (e.Modifiers == Keys.Control && e.KeyCode == Keys.V)
+            else if (e.Modifiers == Keys.Control && e.KeyCode == Keys.V) //paste
             {
-                if (copyedRowIndexes.Count > 0)
-                {
-                    statusInfo.Text = ("will paste " + copyedRowIndexes.Count.ToString() + "rows");
-                    for (int i = 0; i < copyedRowIndexes.Count; i++)
-                    {
-                        int newindex = dgview.Rows.Add();
-                        for (int icol = 0; icol < dgview.Columns.Count; icol++)
-                        {
-                            dgview.Rows[newindex].Cells[icol].Value = dgview.Rows[int.Parse(copyedRowIndexes[i].ToString())].Cells[icol].Value;
-                        }
-                        dgview.Rows[newindex].Selected = true;
-                    }
-                }
-            }
-            else if ((int)e.Modifiers == ((int)Keys.Control + (int)Keys.Alt) && e.KeyCode == Keys.D0)
-            {
-                statusInfo.Text = ("按下了Control + Alt + 0");
+                pasteOperation();
             }
         }
 
@@ -533,6 +736,41 @@ namespace albatross_desktop
                 return;
             }
             dgview.Rows[e.RowIndex].Cells[e.ColumnIndex].ToolTipText = dgview.Columns[e.ColumnIndex].HeaderText;
+        }
+
+        private void saveXMLToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ClearLog();
+            saveXml(Config.ReadIniKey("path", "xml", iniFile) + "\\" + Path.GetFileNameWithoutExtension(currFileName) + ".xml");
+            Log(LOGLEVEL.INFO, "按下了Control + Shift + X来保存表格数据到指定目录的Xml。");
+        }
+
+        private void saveEXCELToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ClearLog();
+            saveExcel07(Config.ReadIniKey("path", "excel", iniFile) + "\\" + Path.GetFileNameWithoutExtension(currFileName) + ".xlsx");
+            Log(LOGLEVEL.INFO, "按下了Control + Shift + E来保存表格数据到指定目录的Excel。");
+        }
+
+        private void dgview_CellBeginEdit(object sender, DataGridViewCellCancelEventArgs e)
+        {
+            Log(LOGLEVEL.WARN, "begin edit " + e.RowIndex + " " + e.ColumnIndex + " " + dgview.Rows[e.RowIndex].Cells[e.ColumnIndex].Value.ToString());
+        }
+
+        private void dgview_CellEndEdit(object sender, DataGridViewCellEventArgs e)
+        {
+            Log(LOGLEVEL.WARN, "end edit " + e.RowIndex + " " + e.ColumnIndex + " " + dgview.Rows[e.RowIndex].Cells[e.ColumnIndex].Value.ToString());
+        }
+
+        private void dgview_CellValueChanged(object sender, DataGridViewCellEventArgs e)
+        {
+            Log(LOGLEVEL.WARN, "value chnaged " + e.RowIndex + " " + e.ColumnIndex + " " + dgview.Rows[e.RowIndex].Cells[e.ColumnIndex].Value.ToString());
+        }
+
+        private void statusInfo_Click(object sender, EventArgs e)
+        {
+            logform = new LogForm(srReader);
+            logform.Show();
         }
     }
 }
