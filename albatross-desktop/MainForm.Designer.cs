@@ -50,6 +50,7 @@
             this.toolStripStatusLabel2 = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripStatusLabel3 = new System.Windows.Forms.ToolStripStatusLabel();
             this.panel1 = new System.Windows.Forms.Panel();
+            this.webBrowser1 = new System.Windows.Forms.WebBrowser();
             this.menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgview)).BeginInit();
             this.contextMenuStrip1.SuspendLayout();
@@ -210,7 +211,7 @@
             // statusInfo
             // 
             this.statusInfo.Name = "statusInfo";
-            this.statusInfo.Size = new System.Drawing.Size(666, 17);
+            this.statusInfo.Size = new System.Drawing.Size(697, 17);
             this.statusInfo.Spring = true;
             this.statusInfo.Text = "info";
             this.statusInfo.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -230,13 +231,23 @@
             // 
             // panel1
             // 
+            this.panel1.BackColor = System.Drawing.SystemColors.Control;
             this.panel1.Controls.Add(this.dgview);
             this.panel1.Controls.Add(this.progressBar1);
-            this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panel1.Location = new System.Drawing.Point(0, 25);
+            this.panel1.Location = new System.Drawing.Point(0, 267);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(785, 425);
+            this.panel1.Size = new System.Drawing.Size(333, 183);
             this.panel1.TabIndex = 7;
+            this.panel1.Visible = false;
+            // 
+            // webBrowser1
+            // 
+            this.webBrowser1.Location = new System.Drawing.Point(412, 102);
+            this.webBrowser1.MinimumSize = new System.Drawing.Size(20, 20);
+            this.webBrowser1.Name = "webBrowser1";
+            this.webBrowser1.Size = new System.Drawing.Size(250, 250);
+            this.webBrowser1.TabIndex = 8;
+            this.webBrowser1.Visible = false;
             // 
             // MainForm
             // 
@@ -245,6 +256,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoValidate = System.Windows.Forms.AutoValidate.EnablePreventFocusChange;
             this.ClientSize = new System.Drawing.Size(785, 472);
+            this.Controls.Add(this.webBrowser1);
             this.Controls.Add(this.panel1);
             this.Controls.Add(this.statusStrip1);
             this.Controls.Add(this.menuStrip1);
@@ -290,6 +302,7 @@
         private System.Windows.Forms.ToolStripMenuItem 保存XMLToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 保存EXCELToolStripMenuItem;
         private System.Windows.Forms.Panel panel1;
+        private System.Windows.Forms.WebBrowser webBrowser1;
 
     }
 }

@@ -16,6 +16,7 @@ using Excel = Microsoft.Office.Interop.Excel;
 using System.Reflection;
 using System.Xml.Linq;
 using System.Collections;
+using System.Data.OleDb;
 
 namespace albatross_desktop
 {
@@ -41,7 +42,6 @@ namespace albatross_desktop
         public string iniFile = System.IO.Directory.GetCurrentDirectory() + "\\conf.ini";
         Excel.Workbook wbb = null;
         Excel.Application eApp = null;
-        WebBrowser webBrowser1 = null;
         string currFileName = null;
         string logFile = System.IO.Directory.GetCurrentDirectory() + "\\errlog.txt";
         FileStream fsFile = null;
@@ -54,8 +54,10 @@ namespace albatross_desktop
         ArrayList copiedRowIndices = new ArrayList();
         ArrayList copiedColIndices = new ArrayList();
         Dictionary<int, ArrayList> copiedCellIndices = new Dictionary<int,ArrayList>();
-        Dictionary<int, ArrayList> cellValueChangeLog = new Dictionary<int, ArrayList>();//value member is CellValueChangeLog
-        ArrayList cellValueChangeLogList = new ArrayList();//member is cellValueChangeLog
+        #endregion
+        #region "operation log"
+        //Dictionary<int, ArrayList> cellValueChangeLog = new Dictionary<int, ArrayList>();//value member is CellValueChangeLog
+        //ArrayList cellValueChangeLogList = new ArrayList();//member is cellValueChangeLog
         ArrayList operationLogList = new ArrayList();//member is cellValueChangeLogList
         int operationCurrentLogIndex = 0;
         #endregion
@@ -69,9 +71,10 @@ namespace albatross_desktop
             fsFile = new FileStream(logFile, FileMode.OpenOrCreate);
             swWriter = new StreamWriter(fsFile);
             srReader = new StreamReader(fsFile);
+            //Application.ApplicationExit += new EventHandler(Application_ApplicationExit);
             
-            currFileName = @"d:\\type_copys_main.xml";
-            processFile(currFileName);
+            //currFileName = @"d:\\type_copys_main.xml";
+            //processFile(currFileName);
         }
 
         public void checkUpdate()
@@ -100,7 +103,7 @@ namespace albatross_desktop
         private void openBtn_Click(object sender, EventArgs e)
         {
             OpenFileDialog opendlg = new OpenFileDialog();
-            opendlg.Filter = "xml文件(*.xml)|*.xml|所有文件(*.*)|*.*";
+            opendlg.Filter = "xml文件(*.xml)|*.xml|excel2007文件(*.xlsx)|*.xlsx|所有文件(*.*)|*.*";
 
             if (opendlg.ShowDialog() == DialogResult.OK)
             {
@@ -115,26 +118,24 @@ namespace albatross_desktop
         {
             string ext = Path.GetExtension(fname);
             string name = Path.GetFileName(fname);
-            dgview.Dock = DockStyle.Fill;
-            dgview.Visible = true;
             if (ext.Equals(".xml"))
             {
+                dgview.Dock = DockStyle.Fill;
+                dgview.Visible = true;
                 readXml(fname);
             }
             else if (ext.Equals(".xls") || ext.Equals(".xlsx"))
             {
-                readExcel(fname);
+                webBrowser1.Visible = false;
+                webBrowser1.Dock = DockStyle.Fill;
+                //readExcel(fname);
+                openExcel(fname);
             }
             return 0;
         }
 
         private int readXml(string fname)
         {
-            //ds.ReadXml(fname);
-            //dgview.DataSource = ds.Tables[0];
-            dt.Rows.Clear();
-            dt.Columns.Clear();
-            //return 0;
             XDocument doc = XDocument.Load(fname);
             bool colFinish = false;
             foreach (var item in doc.Root.Elements())
@@ -155,15 +156,101 @@ namespace albatross_desktop
                     i++;
                 }
             }
-            //MessageBox.Show(dgview.Rows.Count.ToString());
-            //MessageBox.Show(dgview.Rows[0].Cells[0].Value.ToString());
+
+            return 0;
+        }
+
+        private int readXml2(string fname)
+        {
+            //ds.ReadXml(fname);
+            //dgview.DataSource = ds.Tables[0];
+            dt.Rows.Clear();
+            dt.Columns.Clear();
+            //return 0;
+            XDocument doc = XDocument.Load(fname);
+            bool colFinish = false;
+            foreach (var item in doc.Root.Elements())
+            {
+                if (!colFinish)
+                {
+                    foreach (var attr in item.Attributes())
+                    {
+                        dt.Columns.Add(attr.Name.ToString(), System.Type.GetType("System.String"));
+                    }
+                    colFinish = true;
+                }
+                DataRow dr = dt.NewRow();
+                //int index = dt.Rows.Add();
+                int i = 0;
+                foreach (var attr in item.Attributes())
+                {
+                    dr[attr.Name.ToString()] = attr.Value;
+                    //dt.Rows[index].Cells[i].Value = attr.Value;
+                    i++;
+                }
+                dt.Rows.Add(dr);
+            }
+            dgview.DataSource = dt;
 
             return 0;
         }
 
         private int readExcel(string fname)
         {
+            string connStr = "";
+            string fileType = System.IO.Path.GetExtension(fname);
+            if (string.IsNullOrEmpty(fileType)) return -1;
 
+            if (fileType == ".xls")
+                connStr = "Provider=Microsoft.Jet.OLEDB.4.0;" + "Data Source=" + fname + ";" + ";Extended Properties=\"Excel 8.0;HDR=YES;IMEX=1\"";
+            else
+                connStr = "Provider=Microsoft.ACE.OLEDB.12.0;" + "Data Source=" + fname + ";" + ";Extended Properties=\"Excel 12.0;HDR=YES;IMEX=1\"";
+            string sql_F = "Select * FROM [{0}]";
+
+            OleDbConnection conn = null;
+            OleDbDataAdapter da = null;
+            DataTable dtSheetName = null;
+            //DataSet ds = new DataSet();
+            try
+            {
+                // 初始化连接，并打开
+                conn = new OleDbConnection(connStr);
+                conn.Open();
+                // 获取数据源的表定义元数据                        
+                string SheetName = "";
+                dtSheetName = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, new object[] { null, null, null, "TABLE" });
+                // 初始化适配器
+                da = new OleDbDataAdapter();
+                for (int i = 0; i < dtSheetName.Rows.Count; i++)
+                {
+                    SheetName = (string)dtSheetName.Rows[i]["TABLE_NAME"];
+                    if (SheetName.Contains("$") && !SheetName.Replace("'", "").EndsWith("$"))
+                    {
+                        continue;
+                    }
+                    da.SelectCommand = new OleDbCommand(String.Format(sql_F, SheetName), conn);
+                    DataSet dsItem = new DataSet();
+                    da.Fill(dsItem, SheetName);
+                    //ds.Tables.Add(dsItem.Tables[0].Copy());
+                    dt = dsItem.Tables[0].Copy();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.ToString());
+            }
+            finally
+            {
+                // 关闭连接
+                if (conn.State == ConnectionState.Open)
+                {
+                    conn.Close();
+                    da.Dispose();
+                    conn.Dispose();
+                }
+            }
+            //string a = ds.Tables[0].TableName;
+            dgview.DataSource = dt;
             return 0;
         }
 
@@ -374,8 +461,8 @@ namespace albatross_desktop
 
         private void openExcel(string sFileName)
         {
-            webBrowser1 = new WebBrowser();
-            webBrowser1.DocumentCompleted += webBrowser1_DocumentCompleted;
+            webBrowser1.Visible = true;
+            webBrowser1.Dock = DockStyle.Fill;
             //string strFileName = @"d:\test.xlsx";
             Object refmissing = System.Reflection.Missing.Value;
             webBrowser1.Navigate(sFileName);
@@ -385,11 +472,12 @@ namespace albatross_desktop
         private void webBrowser1_DocumentCompleted(object sender, WebBrowserDocumentCompletedEventArgs e)
         {
             string ext = Path.GetExtension(e.Url.ToString());
-            if (ext == "xlsx" || ext == "xls")
+            if (ext == ".xlsx" || ext == ".xls")
             {
                 Object refmissing = System.Reflection.Missing.Value;
                 object[] args = new object[4];
-                args[0] = SHDocVw.OLECMDID.OLECMDID_HIDETOOLBARS;
+                //args[0] = SHDocVw.OLECMDID.OLECMDID_HIDETOOLBARS;
+                args[0] = refmissing;
                 args[1] = SHDocVw.OLECMDEXECOPT.OLECMDEXECOPT_DONTPROMPTUSER;
                 //此处SHDocVw需要添加此引用 c:/windows/system32/SHDocVw.dll
                 args[2] = refmissing;
@@ -404,12 +492,13 @@ namespace albatross_desktop
                 eApp = ((Excel.Workbook)oApplication).Application;
                 wbb = eApp.Workbooks[1];
                 Excel.Worksheet ws = wbb.Worksheets[1] as Excel.Worksheet;
-                /*ws.Cells.Font.Name = "Verdana";
+                ws.Cells.Font.Name = "Verdana";
                 ws.Cells.Font.Size = 14;
                 ws.Cells.Font.Bold = true;
                 Excel.Range range = ws.Cells;
-                Excel.Range oCell = range[10, 10].asExcel.Range;
-                oCell.Value2 = "你好";*/
+                Excel.Range oCell = range[10, 10] as Excel.Range;
+                oCell.Value2 = "你好";
+                int a = 0;
             }
             else
             {
@@ -514,11 +603,13 @@ namespace albatross_desktop
             statusInfo.Text = text;
             swWriter.WriteLine("[" + DateTime.Now.ToString() + "]" + text);
         }
+        
         private void ClearLog()
         {
             statusInfo.ForeColor = Color.Black;
             statusInfo.Text = "";
         }
+       
         private string ArrayListToStr(ArrayList list)
         {
             list.Sort();
@@ -529,6 +620,7 @@ namespace albatross_desktop
             }
             return sb.ToString();
         }
+       
         private string DictToStr(Dictionary<int, ArrayList> dict)
         {
             StringBuilder sb = new StringBuilder();
@@ -544,6 +636,7 @@ namespace albatross_desktop
             sb.Remove(sb.Length - 1, 1);
             return sb.ToString();
         }
+        
         private bool isArrayListEquals(ArrayList a, ArrayList b)
         {
             if (a.Count != b.Count)
@@ -559,6 +652,7 @@ namespace albatross_desktop
             }
             return true;
         }
+        
         private void copyOperation()
         {
             ClearLog();
@@ -597,6 +691,7 @@ namespace albatross_desktop
             }
             dgview.ClearSelection();
         }
+        
         private void pasteOperation()
         {
             ClearLog();
@@ -690,6 +785,7 @@ namespace albatross_desktop
                 }
             }
         }
+        
         private void MainForm_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Modifiers == Keys.Control && e.KeyCode == Keys.C) //copy
@@ -773,5 +869,24 @@ namespace albatross_desktop
             logform = new LogForm(srReader);
             logform.Show();
         }
+
+        private void writeSyncLog(ArrayList dictlist)
+        {
+            operationLogList.Add(dictlist);
+            operationCurrentLogIndex = operationLogList.Count - 1;
+        }
+
+        private void writeToDictList(ArrayList list, int rindex, int cindex, string oval, string nval)
+        {
+            Dictionary<int, CellValueChangeLog> celllog = new Dictionary<int, CellValueChangeLog>();
+            int key = rindex*10000+cindex;
+            celllog.Add(key, new CellValueChangeLog(oval, nval));
+        }
+
+        /*private void Application_ApplicationExit(object sender, EventArgs e)
+        {
+            CloseExcelApplication();
+            swWriter.Close();
+        }*/
     }
 }
