@@ -50,6 +50,7 @@ namespace albatross_desktop
         LogForm logform;
 
         #region "datagridview keyboard operations"
+        DataTable dt = new DataTable();
         ArrayList copiedRowIndices = new ArrayList();
         ArrayList copiedColIndices = new ArrayList();
         Dictionary<int, ArrayList> copiedCellIndices = new Dictionary<int,ArrayList>();
@@ -114,6 +115,8 @@ namespace albatross_desktop
         {
             string ext = Path.GetExtension(fname);
             string name = Path.GetFileName(fname);
+            dgview.Dock = DockStyle.Fill;
+            dgview.Visible = true;
             if (ext.Equals(".xml"))
             {
                 readXml(fname);
@@ -129,10 +132,8 @@ namespace albatross_desktop
         {
             //ds.ReadXml(fname);
             //dgview.DataSource = ds.Tables[0];
-            dgview.Rows.Clear();
-            dgview.Columns.Clear();
-            dgview.Dock = DockStyle.Fill;
-            dgview.Visible = true;
+            dt.Rows.Clear();
+            dt.Columns.Clear();
             //return 0;
             XDocument doc = XDocument.Load(fname);
             bool colFinish = false;
