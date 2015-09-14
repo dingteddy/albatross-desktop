@@ -39,27 +39,28 @@ namespace albatross_desktop
     public partial class MainForm : Form
     {
         //DataSet ds = new DataSet();
-        public string iniFile = System.IO.Directory.GetCurrentDirectory() + "\\conf.ini";
-        Excel.Workbook wbb = null;
-        Excel.Application eApp = null;
-        string currFileName = null;
-        string logFile = System.IO.Directory.GetCurrentDirectory() + "\\errlog.txt";
-        FileStream fsFile = null;
-        StreamWriter swWriter = null;
-        StreamReader srReader = null;
-        LogForm logform;
+        public string g_iniFile = System.IO.Directory.GetCurrentDirectory() + "\\conf.ini";
+        Excel.Workbook g_wbb = null;
+        Excel.Application g_eApp = null;
+        string g_currFileName = null;
+        string g_logFile = System.IO.Directory.GetCurrentDirectory() + "\\errlog.txt";
+        FileStream g_fsFile = null;
+        StreamWriter g_swWriter = null;
+        StreamReader g_srReader = null;
+        LogForm g_logform;
 
         #region "datagridview keyboard operations"
-        DataTable dt = new DataTable();
-        ArrayList copiedRowIndices = new ArrayList();
-        ArrayList copiedColIndices = new ArrayList();
-        Dictionary<int, ArrayList> copiedCellIndices = new Dictionary<int,ArrayList>();
+        DataTable g_dt = new DataTable();
+        ArrayList g_copiedRowIndices = new ArrayList();
+        ArrayList g_copiedColIndices = new ArrayList();
+        Dictionary<int, ArrayList> g_copiedCellIndices = new Dictionary<int,ArrayList>();
         #endregion
         #region "operation log"
         //Dictionary<int, ArrayList> cellValueChangeLog = new Dictionary<int, ArrayList>();//value member is CellValueChangeLog
         //ArrayList cellValueChangeLogList = new ArrayList();//member is cellValueChangeLog
-        ArrayList operationLogList = new ArrayList();//member is cellValueChangeLogList
-        int operationCurrentLogIndex = 0;
+        ArrayList g_operationLogList = new ArrayList();//member is cellValueChangeLogList
+        int g_operationCurrentLogIndex = -1;
+        string g_oldValue = "";
         #endregion
 
         public MainForm()
@@ -68,13 +69,13 @@ namespace albatross_desktop
             //checkUpdate();
             dgview.ShowCellToolTips = true;
             dgview.CellMouseEnter += new DataGridViewCellEventHandler(dgview_CellMouseEnter);
-            fsFile = new FileStream(logFile, FileMode.OpenOrCreate);
-            swWriter = new StreamWriter(fsFile);
-            srReader = new StreamReader(fsFile);
+            g_fsFile = new FileStream(g_logFile, FileMode.OpenOrCreate);
+            g_swWriter = new StreamWriter(g_fsFile);
+            g_srReader = new StreamReader(g_fsFile);
             //Application.ApplicationExit += new EventHandler(Application_ApplicationExit);
             
-            //currFileName = @"d:\\type_copys_main.xml";
-            //processFile(currFileName);
+            g_currFileName = @"d:\\type_copys_main.xml";
+            processFile(g_currFileName);
         }
 
         public void checkUpdate()
@@ -108,7 +109,7 @@ namespace albatross_desktop
             if (opendlg.ShowDialog() == DialogResult.OK)
             {
                 string sFileName = opendlg.FileName;
-                currFileName = sFileName;
+                g_currFileName = sFileName;
                 processFile(sFileName);
                 this.WindowState = FormWindowState.Maximized;
             }
@@ -120,16 +121,16 @@ namespace albatross_desktop
             string name = Path.GetFileName(fname);
             if (ext.Equals(".xml"))
             {
+                panel1.Visible = true;
+                panel1.Dock = DockStyle.Fill;
                 dgview.Dock = DockStyle.Fill;
                 dgview.Visible = true;
                 readXml(fname);
             }
             else if (ext.Equals(".xls") || ext.Equals(".xlsx"))
             {
-                webBrowser1.Visible = false;
-                webBrowser1.Dock = DockStyle.Fill;
-                //readExcel(fname);
-                openExcel(fname);
+                readExcel(fname);
+                //openExcel(fname);
             }
             return 0;
         }
@@ -164,8 +165,8 @@ namespace albatross_desktop
         {
             //ds.ReadXml(fname);
             //dgview.DataSource = ds.Tables[0];
-            dt.Rows.Clear();
-            dt.Columns.Clear();
+            g_dt.Rows.Clear();
+            g_dt.Columns.Clear();
             //return 0;
             XDocument doc = XDocument.Load(fname);
             bool colFinish = false;
@@ -175,11 +176,11 @@ namespace albatross_desktop
                 {
                     foreach (var attr in item.Attributes())
                     {
-                        dt.Columns.Add(attr.Name.ToString(), System.Type.GetType("System.String"));
+                        g_dt.Columns.Add(attr.Name.ToString(), System.Type.GetType("System.String"));
                     }
                     colFinish = true;
                 }
-                DataRow dr = dt.NewRow();
+                DataRow dr = g_dt.NewRow();
                 //int index = dt.Rows.Add();
                 int i = 0;
                 foreach (var attr in item.Attributes())
@@ -188,15 +189,19 @@ namespace albatross_desktop
                     //dt.Rows[index].Cells[i].Value = attr.Value;
                     i++;
                 }
-                dt.Rows.Add(dr);
+                g_dt.Rows.Add(dr);
             }
-            dgview.DataSource = dt;
+            dgview.DataSource = g_dt;
 
             return 0;
         }
 
         private int readExcel(string fname)
         {
+            dgview.Visible = true;
+            panel1.Visible = true;
+            panel1.Dock = DockStyle.Fill;
+            dgview.Dock = DockStyle.Fill;
             string connStr = "";
             string fileType = System.IO.Path.GetExtension(fname);
             if (string.IsNullOrEmpty(fileType)) return -1;
@@ -232,7 +237,7 @@ namespace albatross_desktop
                     DataSet dsItem = new DataSet();
                     da.Fill(dsItem, SheetName);
                     //ds.Tables.Add(dsItem.Tables[0].Copy());
-                    dt = dsItem.Tables[0].Copy();
+                    g_dt = dsItem.Tables[0].Copy();
                 }
             }
             catch (Exception ex)
@@ -250,7 +255,7 @@ namespace albatross_desktop
                 }
             }
             //string a = ds.Tables[0].TableName;
-            dgview.DataSource = dt;
+            dgview.DataSource = g_dt;
             return 0;
         }
 
@@ -489,16 +494,15 @@ namespace albatross_desktop
 
                 //wbb = (Excel.Workbook)oApplication;//wbb和eApp需要在一个全局变量里声明，以便可以回收
 
-                eApp = ((Excel.Workbook)oApplication).Application;
-                wbb = eApp.Workbooks[1];
-                Excel.Worksheet ws = wbb.Worksheets[1] as Excel.Worksheet;
+                g_eApp = ((Excel.Workbook)oApplication).Application;
+                g_wbb = g_eApp.Workbooks[1];
+                Excel.Worksheet ws = g_wbb.Worksheets[1] as Excel.Worksheet;
                 ws.Cells.Font.Name = "Verdana";
                 ws.Cells.Font.Size = 14;
                 ws.Cells.Font.Bold = true;
                 Excel.Range range = ws.Cells;
                 Excel.Range oCell = range[10, 10] as Excel.Range;
                 oCell.Value2 = "你好";
-                int a = 0;
             }
             else
             {
@@ -529,15 +533,15 @@ namespace albatross_desktop
                 {
                     NAR(wbb.Worksheets[i] as Excel.Worksheet);
                 }*/
-                if (null != wbb)
+                if (null != g_wbb)
                 {
-                    wbb.Close(false);
-                    NAR(wbb);
+                    g_wbb.Close(false);
+                    NAR(g_wbb);
                 }
-                if (null != eApp)
+                if (null != g_eApp)
                 {
-                    eApp.Quit();
-                    NAR(eApp);
+                    g_eApp.Quit();
+                    NAR(g_eApp);
                 }
 
             }
@@ -553,7 +557,7 @@ namespace albatross_desktop
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
             CloseExcelApplication();
-            swWriter.Close();
+            g_swWriter.Close();
         }
 
         private void MainForm_DragDrop(object sender, DragEventArgs e)
@@ -562,7 +566,7 @@ namespace albatross_desktop
             string fname = null;
             string[] s = (string[])e.Data.GetData(DataFormats.FileDrop, false);
             fname = s[0];
-            currFileName = fname;
+            g_currFileName = fname;
             processFile(fname);
             this.WindowState = FormWindowState.Maximized;
         }
@@ -601,7 +605,7 @@ namespace albatross_desktop
                 statusInfo.ForeColor = Color.Black;
             }
             statusInfo.Text = text;
-            swWriter.WriteLine("[" + DateTime.Now.ToString() + "]" + text);
+            g_swWriter.WriteLine("[" + DateTime.Now.ToString() + "]" + text);
         }
         
         private void ClearLog()
@@ -659,12 +663,12 @@ namespace albatross_desktop
             if (dgview.SelectedRows.Count > 0)
             {
                 //copy rows
-                copiedRowIndices.Clear();
+                g_copiedRowIndices.Clear();
                 for (int i = 0; i < dgview.SelectedRows.Count; i++)
                 {
-                    copiedRowIndices.Add(dgview.SelectedRows[i].Index);
+                    g_copiedRowIndices.Add(dgview.SelectedRows[i].Index);
                 }
-                Log(LOGLEVEL.INFO, dgview.SelectedRows.Count.ToString() + "rows copied, row index in paste board: " + ArrayListToStr(copiedRowIndices));
+                Log(LOGLEVEL.INFO, dgview.SelectedRows.Count.ToString() + "rows copied, row index in paste board: " + ArrayListToStr(g_copiedRowIndices));
             }
             else if (dgview.SelectedColumns.Count > 0)
             {
@@ -674,20 +678,20 @@ namespace albatross_desktop
             else if (dgview.SelectedCells.Count > 0)
             {
                 //copy cells
-                copiedCellIndices.Clear();
+                g_copiedCellIndices.Clear();
                 for (int i = 0; i < dgview.SelectedCells.Count; i++)
                 {
-                    if (copiedCellIndices.ContainsKey(dgview.SelectedCells[i].RowIndex))
+                    if (g_copiedCellIndices.ContainsKey(dgview.SelectedCells[i].RowIndex))
                     {
-                        copiedCellIndices[dgview.SelectedCells[i].RowIndex].Add(dgview.SelectedCells[i].ColumnIndex);
-                        copiedCellIndices[dgview.SelectedCells[i].RowIndex].Sort();
+                        g_copiedCellIndices[dgview.SelectedCells[i].RowIndex].Add(dgview.SelectedCells[i].ColumnIndex);
+                        g_copiedCellIndices[dgview.SelectedCells[i].RowIndex].Sort();
                     }
                     else
                     {
-                        copiedCellIndices.Add(dgview.SelectedCells[i].RowIndex, new ArrayList() { dgview.SelectedCells[i].ColumnIndex });
+                        g_copiedCellIndices.Add(dgview.SelectedCells[i].RowIndex, new ArrayList() { dgview.SelectedCells[i].ColumnIndex });
                     }
                 }
-                Log(LOGLEVEL.INFO, dgview.SelectedCells.Count.ToString() + "cells copied, cell index in paste board: " + DictToStr(copiedCellIndices));
+                Log(LOGLEVEL.INFO, dgview.SelectedCells.Count.ToString() + "cells copied, cell index in paste board: " + DictToStr(g_copiedCellIndices));
             }
             dgview.ClearSelection();
         }
@@ -695,45 +699,45 @@ namespace albatross_desktop
         private void pasteOperation()
         {
             ClearLog();
-            if (copiedRowIndices.Count > 0)
+            if (g_copiedRowIndices.Count > 0)
             {
                 //paste copied rows
-                for (int i = 0; i < copiedRowIndices.Count; i++)
+                for (int i = 0; i < g_copiedRowIndices.Count; i++)
                 {
                     int newindex = dgview.Rows.Add();
                     for (int icol = 0; icol < dgview.Columns.Count; icol++)
                     {
-                        dgview.Rows[newindex].Cells[icol].Value = dgview.Rows[int.Parse(copiedRowIndices[i].ToString())].Cells[icol].Value;
+                        dgview.Rows[newindex].Cells[icol].Value = dgview.Rows[int.Parse(g_copiedRowIndices[i].ToString())].Cells[icol].Value;
                     }
                     dgview.Rows[newindex].Selected = true;
                 }
-                Log(LOGLEVEL.INFO, copiedRowIndices.Count.ToString() + " rows pasted, row index in paste board: " + ArrayListToStr(copiedRowIndices));
+                Log(LOGLEVEL.INFO, g_copiedRowIndices.Count.ToString() + " rows pasted, row index in paste board: " + ArrayListToStr(g_copiedRowIndices));
             }
-            else if (copiedColIndices.Count > 0)
+            else if (g_copiedColIndices.Count > 0)
             {
                 //paste copied cols
             }
-            else if (copiedCellIndices.Count > 0)
+            else if (g_copiedCellIndices.Count > 0)
             {
                 //paste copied cells
                 //check if copied cells can be pasted
                 int firstkey = 0;
-                foreach (KeyValuePair<int, ArrayList> kvp in copiedCellIndices)
+                foreach (KeyValuePair<int, ArrayList> kvp in g_copiedCellIndices)
                 {
                     if (0 == firstkey)
                     {
                         firstkey = kvp.Key;
                     }
-                    if (!isArrayListEquals(copiedCellIndices[kvp.Key], copiedCellIndices[firstkey]))
+                    if (!isArrayListEquals(g_copiedCellIndices[kvp.Key], g_copiedCellIndices[firstkey]))
                     {
-                        Log(LOGLEVEL.ERROR, "cells cant be pasted, should be square box, cell index in paste board: " + DictToStr(copiedCellIndices));
+                        Log(LOGLEVEL.ERROR, "cells cant be pasted, should be square box, cell index in paste board: " + DictToStr(g_copiedCellIndices));
                         return;
                     }
                 }
                 //check if select a postion
                 if (dgview.SelectedCells.Count <= 0)
                 {
-                    Log(LOGLEVEL.ERROR, "should select paste position, cell index in paste board: " + DictToStr(copiedCellIndices));
+                    Log(LOGLEVEL.ERROR, "should select paste position, cell index in paste board: " + DictToStr(g_copiedCellIndices));
                     return;
                 }
                 //check if paste position valid, out of bound
@@ -748,15 +752,16 @@ namespace albatross_desktop
                         pasteStartColDex = dgview.SelectedCells[i].ColumnIndex;
                     }
                 }
-                if (pasteStartRowDex + copiedCellIndices.Count > dgview.Rows.Count || pasteStartColDex + copiedCellIndices[firstkey].Count > dgview.Columns.Count)
+                if (pasteStartRowDex + g_copiedCellIndices.Count > dgview.Rows.Count || pasteStartColDex + g_copiedCellIndices[firstkey].Count > dgview.Columns.Count)
                 {
-                    Log(LOGLEVEL.ERROR, "out of bound, cell index in paste board: " + DictToStr(copiedCellIndices));
+                    Log(LOGLEVEL.ERROR, "out of bound, cell index in paste board: " + DictToStr(g_copiedCellIndices));
                     return;
                 }
                 //start to paste cells
-                if (copiedCellIndices.Count == 1)
+                ArrayList tmplist = new ArrayList();
+                if (g_copiedCellIndices.Count == 1)
                 {
-                    foreach (KeyValuePair<int, ArrayList> kvp in copiedCellIndices)
+                    foreach (KeyValuePair<int, ArrayList> kvp in g_copiedCellIndices)
                     {
                         if (kvp.Value.Count == 1)
                         {
@@ -765,27 +770,116 @@ namespace albatross_desktop
                             {
                                 foreach (int m in kvp.Value)
                                 {
+                                    writeToDictList(
+                                        tmplist, 
+                                        dgview.SelectedCells[i].RowIndex, 
+                                        dgview.SelectedCells[i].ColumnIndex, 
+                                        dgview.SelectedCells[i].Value.ToString(), 
+                                        dgview.Rows[kvp.Key].Cells[m].Value.ToString()
+                                    );
                                     dgview.SelectedCells[i].Value = dgview.Rows[kvp.Key].Cells[m].Value;
                                 }
                             }
+                            //operation log
+                            writeSyncLog(tmplist);
                             return;
                         }
                     }
                 }
                 int tmprowdex = 0;
-                foreach (KeyValuePair<int, ArrayList> kvp in copiedCellIndices)
+                foreach (KeyValuePair<int, ArrayList> kvp in g_copiedCellIndices)
                 {
                     int tmpcoldex = 0;
                     foreach (int m in kvp.Value)
                     {
+                        writeToDictList(
+                            tmplist, 
+                            pasteStartRowDex + tmprowdex, 
+                            pasteStartColDex + tmpcoldex,
+                            dgview.Rows[pasteStartRowDex + tmprowdex].Cells[pasteStartColDex + tmpcoldex].Value.ToString(), 
+                            dgview.Rows[kvp.Key].Cells[m].Value.ToString()
+                        );
                         dgview.Rows[pasteStartRowDex + tmprowdex].Cells[pasteStartColDex + tmpcoldex].Value = dgview.Rows[kvp.Key].Cells[m].Value;
                         tmpcoldex++;
                     }
                     tmprowdex++;
                 }
+                writeSyncLog(tmplist);
             }
         }
-        
+
+        private void undoOperation()
+        {
+            if (g_operationCurrentLogIndex < 0)
+            {
+                MessageBox.Show("no hist record!");
+                return;
+            }
+            ArrayList valarrlist = null;
+            if (g_operationCurrentLogIndex == 0)
+            {
+                valarrlist = g_operationLogList[0] as ArrayList;
+                for (int i = 0; i < valarrlist.Count; i++)
+                {
+                    Dictionary<int, CellValueChangeLog> valdict = valarrlist[i] as Dictionary<int, CellValueChangeLog>;
+                    foreach (KeyValuePair<int, CellValueChangeLog> kvp in valdict)
+                    {
+                        dgview.Rows[kvp.Key / 10000].Cells[kvp.Key % 10000].Value = kvp.Value.oldval;
+                    }
+                }
+                return;
+            }
+            //fill data of index
+            valarrlist = g_operationLogList[g_operationCurrentLogIndex] as ArrayList;
+            for (int i = 0; i < valarrlist.Count; i++)
+            {
+                Dictionary<int, CellValueChangeLog> valdict = valarrlist[i] as Dictionary<int, CellValueChangeLog>;
+                foreach (KeyValuePair<int, CellValueChangeLog> kvp in valdict)
+                {
+                    dgview.Rows[kvp.Key / 10000].Cells[kvp.Key % 10000].Value = kvp.Value.oldval;
+                }
+            }
+            g_operationCurrentLogIndex--;
+            dgview.ClearSelection();
+            Log(LOGLEVEL.WARN, "undo: " + g_operationCurrentLogIndex.ToString() + "-" + g_operationLogList.Count.ToString());
+        }
+
+        private void redoOperation()
+        {
+            if (g_operationCurrentLogIndex < 0 || g_operationCurrentLogIndex > g_operationLogList.Count - 1)
+            {
+                MessageBox.Show("no more new record");
+                return;
+            }
+            ArrayList valarrlist = null;
+            if (g_operationCurrentLogIndex == g_operationLogList.Count - 1)
+            {
+                valarrlist = g_operationLogList[g_operationCurrentLogIndex] as ArrayList;
+                for (int i = 0; i < valarrlist.Count; i++)
+                {
+                    Dictionary<int, CellValueChangeLog> valdict = valarrlist[i] as Dictionary<int, CellValueChangeLog>;
+                    foreach (KeyValuePair<int, CellValueChangeLog> kvp in valdict)
+                    {
+                        dgview.Rows[kvp.Key / 10000].Cells[kvp.Key % 10000].Value = kvp.Value.newval;
+                    }
+                }
+                return;
+            }
+            //fill data of index
+            valarrlist = g_operationLogList[g_operationCurrentLogIndex] as ArrayList;
+            for (int i = 0; i < valarrlist.Count; i++)
+            {
+                Dictionary<int, CellValueChangeLog> valdict = valarrlist[i] as Dictionary<int, CellValueChangeLog>;
+                foreach (KeyValuePair<int, CellValueChangeLog> kvp in valdict)
+                {
+                    dgview.Rows[kvp.Key / 10000].Cells[kvp.Key % 10000].Value = kvp.Value.newval;
+                }
+            }
+            g_operationCurrentLogIndex++;
+            dgview.ClearSelection();
+            Log(LOGLEVEL.WARN, "redo: " + g_operationCurrentLogIndex.ToString() + "-" + g_operationLogList.Count.ToString());
+        }
+
         private void MainForm_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Modifiers == Keys.Control && e.KeyCode == Keys.C) //copy
@@ -795,6 +889,14 @@ namespace albatross_desktop
             else if (e.Modifiers == Keys.Control && e.KeyCode == Keys.V) //paste
             {
                 pasteOperation();
+            }
+            else if (e.Modifiers == Keys.Control && e.KeyCode == Keys.Z)
+            {
+                undoOperation();
+            }
+            else if (e.Modifiers == Keys.Control && e.KeyCode == Keys.Y)
+            {
+                redoOperation();
             }
         }
 
@@ -838,25 +940,33 @@ namespace albatross_desktop
         private void saveXMLToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ClearLog();
-            saveXml(Config.ReadIniKey("path", "xml", iniFile) + "\\" + Path.GetFileNameWithoutExtension(currFileName) + ".xml");
+            saveXml(Config.ReadIniKey("path", "xml", g_iniFile) + "\\" + Path.GetFileNameWithoutExtension(g_currFileName) + ".xml");
             Log(LOGLEVEL.INFO, "按下了Control + Shift + X来保存表格数据到指定目录的Xml。");
         }
 
         private void saveEXCELToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ClearLog();
-            saveExcel07(Config.ReadIniKey("path", "excel", iniFile) + "\\" + Path.GetFileNameWithoutExtension(currFileName) + ".xlsx");
+            saveExcel07(Config.ReadIniKey("path", "excel", g_iniFile) + "\\" + Path.GetFileNameWithoutExtension(g_currFileName) + ".xlsx");
             Log(LOGLEVEL.INFO, "按下了Control + Shift + E来保存表格数据到指定目录的Excel。");
         }
 
         private void dgview_CellBeginEdit(object sender, DataGridViewCellCancelEventArgs e)
         {
             Log(LOGLEVEL.WARN, "begin edit " + e.RowIndex + " " + e.ColumnIndex + " " + dgview.Rows[e.RowIndex].Cells[e.ColumnIndex].Value.ToString());
+            g_oldValue = dgview.Rows[e.RowIndex].Cells[e.ColumnIndex].Value.ToString();
         }
 
         private void dgview_CellEndEdit(object sender, DataGridViewCellEventArgs e)
         {
             Log(LOGLEVEL.WARN, "end edit " + e.RowIndex + " " + e.ColumnIndex + " " + dgview.Rows[e.RowIndex].Cells[e.ColumnIndex].Value.ToString());
+            //operation log
+            if (!g_oldValue.Equals(dgview.Rows[e.RowIndex].Cells[e.ColumnIndex].Value.ToString()))
+            {
+                ArrayList tmplist = new ArrayList();
+                writeToDictList(tmplist, e.RowIndex, e.ColumnIndex, g_oldValue, dgview.Rows[e.RowIndex].Cells[e.ColumnIndex].Value.ToString());
+                writeSyncLog(tmplist);
+            }
         }
 
         private void dgview_CellValueChanged(object sender, DataGridViewCellEventArgs e)
@@ -866,14 +976,14 @@ namespace albatross_desktop
 
         private void statusInfo_Click(object sender, EventArgs e)
         {
-            logform = new LogForm(srReader);
-            logform.Show();
+            g_logform = new LogForm(g_srReader);
+            g_logform.Show();
         }
 
         private void writeSyncLog(ArrayList dictlist)
         {
-            operationLogList.Add(dictlist);
-            operationCurrentLogIndex = operationLogList.Count - 1;
+            g_operationLogList.Add(dictlist);
+            g_operationCurrentLogIndex = g_operationLogList.Count-1;
         }
 
         private void writeToDictList(ArrayList list, int rindex, int cindex, string oval, string nval)
@@ -881,6 +991,7 @@ namespace albatross_desktop
             Dictionary<int, CellValueChangeLog> celllog = new Dictionary<int, CellValueChangeLog>();
             int key = rindex*10000+cindex;
             celllog.Add(key, new CellValueChangeLog(oval, nval));
+            list.Add(celllog);
         }
 
         /*private void Application_ApplicationExit(object sender, EventArgs e)

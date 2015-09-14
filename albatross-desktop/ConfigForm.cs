@@ -19,8 +19,8 @@ namespace albatross_desktop
         {
             InitializeComponent();
             parent = p;
-            excelpathtb.Text = Config.ReadIniKey("path", "excel", parent.iniFile);
-            xmlpathtb.Text = Config.ReadIniKey("path", "xml", parent.iniFile);
+            excelpathtb.Text = Config.ReadIniKey("path", "excel", parent.g_iniFile);
+            xmlpathtb.Text = Config.ReadIniKey("path", "xml", parent.g_iniFile);
         }
 
         private void cancelbtn_Click(object sender, EventArgs e)
@@ -31,8 +31,8 @@ namespace albatross_desktop
         private void commitbtn_Click(object sender, EventArgs e)
         {
             //assignment
-            Config.WriteIniKey("path", "excel", excelpathtb.Text, parent.iniFile);
-            Config.WriteIniKey("path", "xml", xmlpathtb.Text, parent.iniFile);
+            Config.WriteIniKey("path", "excel", excelpathtb.Text, parent.g_iniFile);
+            Config.WriteIniKey("path", "xml", xmlpathtb.Text, parent.g_iniFile);
             this.Close();
         }
 

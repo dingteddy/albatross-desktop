@@ -64,7 +64,6 @@ namespace albatross_desktop
                 Excel.Range range = ws.Cells;
                 Excel.Range oCell = range[10, 10] as Excel.Range;
                 oCell.Value2 = "你好";
-                int a = 0;
             }
             else
             {
