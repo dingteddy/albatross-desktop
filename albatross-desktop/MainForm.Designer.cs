@@ -51,6 +51,7 @@
             this.toolStripStatusLabel3 = new System.Windows.Forms.ToolStripStatusLabel();
             this.panel1 = new System.Windows.Forms.Panel();
             this.webBrowser1 = new System.Windows.Forms.WebBrowser();
+            this.转换工具VToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgview)).BeginInit();
             this.contextMenuStrip1.SuspendLayout();
@@ -131,7 +132,8 @@
             // 配置PToolStripMenuItem
             // 
             this.配置PToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.配置PToolStripMenuItem1});
+            this.配置PToolStripMenuItem1,
+            this.转换工具VToolStripMenuItem});
             this.配置PToolStripMenuItem.Name = "配置PToolStripMenuItem";
             this.配置PToolStripMenuItem.Size = new System.Drawing.Size(59, 21);
             this.配置PToolStripMenuItem.Text = "工具(&T)";
@@ -140,7 +142,7 @@
             // 
             this.配置PToolStripMenuItem1.Name = "配置PToolStripMenuItem1";
             this.配置PToolStripMenuItem1.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.P)));
-            this.配置PToolStripMenuItem1.Size = new System.Drawing.Size(159, 22);
+            this.配置PToolStripMenuItem1.Size = new System.Drawing.Size(183, 22);
             this.配置PToolStripMenuItem1.Text = "配置(&P)";
             this.配置PToolStripMenuItem1.Click += new System.EventHandler(this.ConfigToolStripMenuItem1_Click);
             // 
@@ -249,6 +251,14 @@
             this.webBrowser1.TabIndex = 8;
             this.webBrowser1.Visible = false;
             // 
+            // 转换工具VToolStripMenuItem
+            // 
+            this.转换工具VToolStripMenuItem.Name = "转换工具VToolStripMenuItem";
+            this.转换工具VToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.T)));
+            this.转换工具VToolStripMenuItem.Size = new System.Drawing.Size(183, 22);
+            this.转换工具VToolStripMenuItem.Text = "转换工具(&T)";
+            this.转换工具VToolStripMenuItem.Click += new System.EventHandler(this.convertVToolStripMenuItem_Click);
+            // 
             // MainForm
             // 
             this.AllowDrop = true;
@@ -303,6 +313,7 @@
         private System.Windows.Forms.ToolStripMenuItem 保存EXCELToolStripMenuItem;
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.WebBrowser webBrowser1;
+        private System.Windows.Forms.ToolStripMenuItem 转换工具VToolStripMenuItem;
 
     }
 }

@@ -38,7 +38,7 @@ namespace albatross_desktop
     }
     public partial class MainForm : Form
     {
-        //DataSet ds = new DataSet();
+        DataTable g_dt = null;
         public string g_iniFile = System.IO.Directory.GetCurrentDirectory() + "\\conf.ini";
         Excel.Workbook g_wbb = null;
         Excel.Application g_eApp = null;
@@ -50,7 +50,6 @@ namespace albatross_desktop
         LogForm g_logform;
 
         #region "datagridview keyboard operations"
-        DataTable g_dt = new DataTable();
         ArrayList g_copiedRowIndices = new ArrayList();
         ArrayList g_copiedColIndices = new ArrayList();
         Dictionary<int, ArrayList> g_copiedCellIndices = new Dictionary<int,ArrayList>();
@@ -73,11 +72,13 @@ namespace albatross_desktop
             g_swWriter = new StreamWriter(g_fsFile);
             g_srReader = new StreamReader(g_fsFile);
             //Application.ApplicationExit += new EventHandler(Application_ApplicationExit);
-            
-            g_currFileName = @"d:\\type_copys_main.xml";
-            processFile(g_currFileName);
+
+            //g_currFileName = @"e:\\type_card.xml";
+            //processFile(g_currFileName);
+            this.WindowState = FormWindowState.Maximized;
         }
 
+        #region "app updater"
         public void checkUpdate()
         {
             SoftUpdate app = new SoftUpdate(System.Windows.Forms.Application.ExecutablePath, "BlogWriter");
@@ -100,6 +101,7 @@ namespace albatross_desktop
         {
             MessageBox.Show("更新完成，请重新启动程序！", "Update", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
+        #endregion
 
         private void openBtn_Click(object sender, EventArgs e)
         {
@@ -129,6 +131,10 @@ namespace albatross_desktop
             }
             else if (ext.Equals(".xls") || ext.Equals(".xlsx"))
             {
+                dgview.Visible = true;
+                panel1.Visible = true;
+                panel1.Dock = DockStyle.Fill;
+                dgview.Dock = DockStyle.Fill;
                 readExcel(fname);
                 //openExcel(fname);
             }
@@ -137,6 +143,7 @@ namespace albatross_desktop
 
         private int readXml(string fname)
         {
+            g_dt = new DataTable(Path.GetFileName(fname));
             XDocument doc = XDocument.Load(fname);
             bool colFinish = false;
             foreach (var item in doc.Root.Elements())
@@ -145,52 +152,18 @@ namespace albatross_desktop
                 {
                     foreach (var attr in item.Attributes())
                     {
-                        dgview.Columns.Add(attr.Name.ToString(), attr.Name.ToString());
-                    }
-                    colFinish = true;
-                }
-                int index = dgview.Rows.Add();
-                int i = 0;
-                foreach (var attr in item.Attributes())
-                {
-                    dgview.Rows[index].Cells[i].Value = attr.Value;
-                    i++;
-                }
-            }
-
-            return 0;
-        }
-
-        private int readXml2(string fname)
-        {
-            //ds.ReadXml(fname);
-            //dgview.DataSource = ds.Tables[0];
-            g_dt.Rows.Clear();
-            g_dt.Columns.Clear();
-            //return 0;
-            XDocument doc = XDocument.Load(fname);
-            bool colFinish = false;
-            foreach (var item in doc.Root.Elements())
-            {
-                if (!colFinish)
-                {
-                    foreach (var attr in item.Attributes())
-                    {
-                        g_dt.Columns.Add(attr.Name.ToString(), System.Type.GetType("System.String"));
+                        g_dt.Columns.Add(attr.Name.ToString());
                     }
                     colFinish = true;
                 }
                 DataRow dr = g_dt.NewRow();
-                //int index = dt.Rows.Add();
-                int i = 0;
                 foreach (var attr in item.Attributes())
                 {
                     dr[attr.Name.ToString()] = attr.Value;
-                    //dt.Rows[index].Cells[i].Value = attr.Value;
-                    i++;
                 }
                 g_dt.Rows.Add(dr);
             }
+            dgview.DataSource = null;
             dgview.DataSource = g_dt;
 
             return 0;
@@ -198,10 +171,7 @@ namespace albatross_desktop
 
         private int readExcel(string fname)
         {
-            dgview.Visible = true;
-            panel1.Visible = true;
-            panel1.Dock = DockStyle.Fill;
-            dgview.Dock = DockStyle.Fill;
+            g_dt = new DataTable(Path.GetFileName(fname));
             string connStr = "";
             string fileType = System.IO.Path.GetExtension(fname);
             if (string.IsNullOrEmpty(fileType)) return -1;
@@ -236,8 +206,8 @@ namespace albatross_desktop
                     da.SelectCommand = new OleDbCommand(String.Format(sql_F, SheetName), conn);
                     DataSet dsItem = new DataSet();
                     da.Fill(dsItem, SheetName);
-                    //ds.Tables.Add(dsItem.Tables[0].Copy());
                     g_dt = dsItem.Tables[0].Copy();
+                    break;
                 }
             }
             catch (Exception ex)
@@ -262,7 +232,7 @@ namespace albatross_desktop
         private void saveBtn_Click(object sender, EventArgs e)
         {
             SaveFileDialog savedlg = new SaveFileDialog();
-            if (dgview.Rows.Count == 0)
+            if (g_dt != null && g_dt.Rows.Count == 0)
             {
                 MessageBox.Show("没有数据可供导出！", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
@@ -313,21 +283,21 @@ namespace albatross_desktop
             //1、创建XML对象
             XDocument xdocument = new XDocument(
                 new XDeclaration("1.0", "utf-8", "yes"),
-                new XComment("提示"));
+                new XComment("this is comment region"));
             //2、创建跟节点
             XElement eRoot = new XElement("basenode");
             //添加到xdoc中
             xdocument.Add(eRoot);
             //3、添加子节点
-            for (int j = 0; j < dgview.Rows.Count; j++)
+            for (int j = 0; j < g_dt.Rows.Count; j++)
             {
                 XElement ele1 = new XElement("node");
                 //ele1.Value = "内容1";
                 eRoot.Add(ele1);
-                for (int k = 0; k < dgview.Columns.Count; k++)
+                for (int k = 0; k < g_dt.Columns.Count; k++)
                 {
                     //4、为ele1节点添加属性
-                    XAttribute attr = new XAttribute(dgview.Columns[k].HeaderText, dgview.Rows[j].Cells[k].Value.ToString());
+                    XAttribute attr = new XAttribute(g_dt.Columns[k].ColumnName, g_dt.Rows[j][g_dt.Columns[k].ColumnName].ToString());
                     ele1.Add(attr);
                 }
             }
@@ -350,26 +320,26 @@ namespace albatross_desktop
             try
             {
                 //写标题
-                for (int i = 0; i < dgview.ColumnCount; i++)
+                for (int i = 0; i < g_dt.Columns.Count; i++)
                 {
                     if (i > 0)
                     {
                         str += "\t";
                     }
-                    str += dgview.Columns[i].HeaderText;
+                    str += g_dt.Columns[i].ColumnName;
                 }
                 sw.WriteLine(str);
                 //写内容
-                for (int j = 0; j < dgview.Rows.Count; j++)
+                for (int j = 0; j < g_dt.Rows.Count; j++)
                 {
                     string tempStr = "";
-                    for (int k = 0; k < dgview.Columns.Count; k++)
+                    for (int k = 0; k < g_dt.Columns.Count; k++)
                     {
                         if (k > 0)
                         {
                             tempStr += "\t";
                         }
-                        tempStr += dgview.Rows[j].Cells[k].Value.ToString();
+                        tempStr += g_dt.Rows[j][g_dt.Columns[k].ColumnName].ToString();
                     }
 
                     sw.WriteLine(tempStr);
@@ -409,9 +379,9 @@ namespace albatross_desktop
                 }
                 string sLen = "";
                 //取得最后一列列名
-                char H = (char)(64 + dgview.ColumnCount / 26);
-                char L = (char)(64 + dgview.ColumnCount % 26);
-                if (dgview.ColumnCount < 26)
+                char H = (char)(64 + g_dt.Columns.Count / 26);
+                char L = (char)(64 + g_dt.Columns.Count % 26);
+                if (g_dt.Columns.Count < 26)
                 {
                     sLen = L.ToString();
                 }
@@ -424,27 +394,29 @@ namespace albatross_desktop
                 //标题
                 string sTmp = sLen + "1";
                 Excel.Range ranCaption = worksheet.get_Range(sTmp, "A1");
-                string[] asCaption = new string[dgview.ColumnCount];
-                for (int i = 0; i < dgview.ColumnCount; i++)
+                string[] asCaption = new string[g_dt.Columns.Count];
+                for (int i = 0; i < g_dt.Columns.Count; i++)
                 {
-                    asCaption[i] = dgview.Columns[i].HeaderText;
+                    asCaption[i] = g_dt.Columns[i].ColumnName;
                 }
                 ranCaption.Value2 = asCaption;
 
                 //数据
-                object[] obj = new object[dgview.Columns.Count];
-                for (int r = 0; r < dgview.RowCount - 1; r++)
+                object[] obj = new object[g_dt.Columns.Count];
+                for (int r = 0; r < g_dt.Rows.Count - 1; r++)
                 {
-                    for (int l = 0; l < dgview.Columns.Count; l++)
+                    for (int l = 0; l < g_dt.Columns.Count; l++)
                     {
-                        if (dgview[l, r].ValueType == typeof(DateTime))
-                        {
-                            obj[l] = dgview[l, r].Value.ToString();
-                        }
-                        else
-                        {
-                            obj[l] = dgview[l, r].Value;
-                        }
+                        //if (g_dt.Rows[r][g_dt.Columns[l].ColumnName].GetType() == typeof(DateTime))
+                        //if (g_dt[l, r].ValueType == typeof(DateTime))
+                        //{
+                            //obj[l] = g_dt[l, r].Value.ToString();
+                            obj[l] = g_dt.Rows[r][g_dt.Columns[l].ColumnName].ToString();
+                        //}
+                        //else
+                        //{
+                        //    obj[l] = g_dt.Rows[j][g_dt.Columns[k].ColumnName];
+                        //}
                     }
                     string cell1 = sLen + ((int)(r + 2)).ToString();
                     string cell2 = "A" + ((int)(r + 2)).ToString();
@@ -695,7 +667,7 @@ namespace albatross_desktop
             }
             dgview.ClearSelection();
         }
-        
+
         private void pasteOperation()
         {
             ClearLog();
@@ -704,12 +676,12 @@ namespace albatross_desktop
                 //paste copied rows
                 for (int i = 0; i < g_copiedRowIndices.Count; i++)
                 {
-                    int newindex = dgview.Rows.Add();
-                    for (int icol = 0; icol < dgview.Columns.Count; icol++)
+                    DataRow dr = g_dt.NewRow();
+                    for (int icol = 0; icol < g_dt.Columns.Count; icol++)
                     {
-                        dgview.Rows[newindex].Cells[icol].Value = dgview.Rows[int.Parse(g_copiedRowIndices[i].ToString())].Cells[icol].Value;
+                        dr[g_dt.Columns[icol].ColumnName] = g_dt.Rows[int.Parse(g_copiedRowIndices[i].ToString())][g_dt.Columns[icol].ColumnName].ToString();
                     }
-                    dgview.Rows[newindex].Selected = true;
+                    g_dt.Rows.Add(dr);
                 }
                 Log(LOGLEVEL.INFO, g_copiedRowIndices.Count.ToString() + " rows pasted, row index in paste board: " + ArrayListToStr(g_copiedRowIndices));
             }
@@ -771,10 +743,10 @@ namespace albatross_desktop
                                 foreach (int m in kvp.Value)
                                 {
                                     writeToDictList(
-                                        tmplist, 
-                                        dgview.SelectedCells[i].RowIndex, 
-                                        dgview.SelectedCells[i].ColumnIndex, 
-                                        dgview.SelectedCells[i].Value.ToString(), 
+                                        tmplist,
+                                        dgview.SelectedCells[i].RowIndex,
+                                        dgview.SelectedCells[i].ColumnIndex,
+                                        dgview.SelectedCells[i].Value.ToString(),
                                         dgview.Rows[kvp.Key].Cells[m].Value.ToString()
                                     );
                                     dgview.SelectedCells[i].Value = dgview.Rows[kvp.Key].Cells[m].Value;
@@ -793,10 +765,10 @@ namespace albatross_desktop
                     foreach (int m in kvp.Value)
                     {
                         writeToDictList(
-                            tmplist, 
-                            pasteStartRowDex + tmprowdex, 
+                            tmplist,
+                            pasteStartRowDex + tmprowdex,
                             pasteStartColDex + tmpcoldex,
-                            dgview.Rows[pasteStartRowDex + tmprowdex].Cells[pasteStartColDex + tmpcoldex].Value.ToString(), 
+                            dgview.Rows[pasteStartRowDex + tmprowdex].Cells[pasteStartColDex + tmpcoldex].Value.ToString(),
                             dgview.Rows[kvp.Key].Cells[m].Value.ToString()
                         );
                         dgview.Rows[pasteStartRowDex + tmprowdex].Cells[pasteStartColDex + tmpcoldex].Value = dgview.Rows[kvp.Key].Cells[m].Value;
@@ -806,6 +778,8 @@ namespace albatross_desktop
                 }
                 writeSyncLog(tmplist);
             }
+            dgview.DataSource = null;
+            dgview.DataSource = g_dt;
         }
 
         private void undoOperation()
@@ -992,6 +966,15 @@ namespace albatross_desktop
             int key = rindex*10000+cindex;
             celllog.Add(key, new CellValueChangeLog(oval, nval));
             list.Add(celllog);
+        }
+
+        private void convertVToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            FileConvertForm fcf = new FileConvertForm(this);
+            this.Hide();
+            fcf.WindowState = FormWindowState.Maximized;
+            fcf.ShowDialog();
+            this.Show();
         }
 
         /*private void Application_ApplicationExit(object sender, EventArgs e)
