@@ -72,6 +72,7 @@
     <Compile Include="FileConvertForm.Designer.cs">
       <DependentUpon>FileConvertForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="FileOpClass.cs" />
     <Compile Include="LogForm.cs">
       <SubType>Form</SubType>
     </Compile>

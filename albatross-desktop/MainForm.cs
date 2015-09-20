@@ -127,105 +127,20 @@ namespace albatross_desktop
                 panel1.Dock = DockStyle.Fill;
                 dgview.Dock = DockStyle.Fill;
                 dgview.Visible = true;
-                readXml(fname);
+                g_dt = FileOpClass.readXml(fname);
+                dgview.DataSource = null;
+                dgview.DataSource = g_dt;
             }
             else if (ext.Equals(".xls") || ext.Equals(".xlsx"))
             {
-                dgview.Visible = true;
                 panel1.Visible = true;
                 panel1.Dock = DockStyle.Fill;
                 dgview.Dock = DockStyle.Fill;
-                readExcel(fname);
-                //openExcel(fname);
+                dgview.Visible = true;
+                g_dt = FileOpClass.readExcel(fname);
+                dgview.DataSource = null;
+                dgview.DataSource = g_dt;
             }
-            return 0;
-        }
-
-        private int readXml(string fname)
-        {
-            g_dt = new DataTable(Path.GetFileName(fname));
-            XDocument doc = XDocument.Load(fname);
-            bool colFinish = false;
-            foreach (var item in doc.Root.Elements())
-            {
-                if (!colFinish)
-                {
-                    foreach (var attr in item.Attributes())
-                    {
-                        g_dt.Columns.Add(attr.Name.ToString());
-                    }
-                    colFinish = true;
-                }
-                DataRow dr = g_dt.NewRow();
-                foreach (var attr in item.Attributes())
-                {
-                    dr[attr.Name.ToString()] = attr.Value;
-                }
-                g_dt.Rows.Add(dr);
-            }
-            dgview.DataSource = null;
-            dgview.DataSource = g_dt;
-
-            return 0;
-        }
-
-        private int readExcel(string fname)
-        {
-            g_dt = new DataTable(Path.GetFileName(fname));
-            string connStr = "";
-            string fileType = System.IO.Path.GetExtension(fname);
-            if (string.IsNullOrEmpty(fileType)) return -1;
-
-            if (fileType == ".xls")
-                connStr = "Provider=Microsoft.Jet.OLEDB.4.0;" + "Data Source=" + fname + ";" + ";Extended Properties=\"Excel 8.0;HDR=YES;IMEX=1\"";
-            else
-                connStr = "Provider=Microsoft.ACE.OLEDB.12.0;" + "Data Source=" + fname + ";" + ";Extended Properties=\"Excel 12.0;HDR=YES;IMEX=1\"";
-            string sql_F = "Select * FROM [{0}]";
-
-            OleDbConnection conn = null;
-            OleDbDataAdapter da = null;
-            DataTable dtSheetName = null;
-            //DataSet ds = new DataSet();
-            try
-            {
-                // 初始化连接，并打开
-                conn = new OleDbConnection(connStr);
-                conn.Open();
-                // 获取数据源的表定义元数据                        
-                string SheetName = "";
-                dtSheetName = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, new object[] { null, null, null, "TABLE" });
-                // 初始化适配器
-                da = new OleDbDataAdapter();
-                for (int i = 0; i < dtSheetName.Rows.Count; i++)
-                {
-                    SheetName = (string)dtSheetName.Rows[i]["TABLE_NAME"];
-                    if (SheetName.Contains("$") && !SheetName.Replace("'", "").EndsWith("$"))
-                    {
-                        continue;
-                    }
-                    da.SelectCommand = new OleDbCommand(String.Format(sql_F, SheetName), conn);
-                    DataSet dsItem = new DataSet();
-                    da.Fill(dsItem, SheetName);
-                    g_dt = dsItem.Tables[0].Copy();
-                    break;
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.ToString());
-            }
-            finally
-            {
-                // 关闭连接
-                if (conn.State == ConnectionState.Open)
-                {
-                    conn.Close();
-                    da.Dispose();
-                    conn.Dispose();
-                }
-            }
-            //string a = ds.Tables[0].TableName;
-            dgview.DataSource = g_dt;
             return 0;
         }
 
