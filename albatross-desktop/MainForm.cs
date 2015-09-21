@@ -77,7 +77,7 @@ namespace albatross_desktop
             //this.WindowState = FormWindowState.Maximized;
             //Application.ApplicationExit += new EventHandler(Application_ApplicationExit);
             //open db
-            try
+            /*try
             {
                 string connstr = "server=" + Config.ReadIniKey("db", "host", g_iniFile) + ";";
                 connstr += "User Id=" + Config.ReadIniKey("db", "user", g_iniFile) + ";";
@@ -99,8 +99,8 @@ namespace albatross_desktop
             catch (Exception ex)
             {
                 MessageBox.Show("db error: " + ex.ToString());
-            }
-            //g_currFileName = @"d:\\type_copys_main.xml";
+            }*/
+            //g_currFileName = @"C:\Users\money_2\Desktop\data_round_client.txt.xls";
             //processFile(g_currFileName);
         }
 

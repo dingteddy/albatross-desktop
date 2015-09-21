@@ -13,6 +13,7 @@ using System.Data.OleDb;
 using System.Windows.Forms;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Xml;
 
 namespace albatross_desktop
 {
@@ -104,20 +105,133 @@ namespace albatross_desktop
             return dt;
         }
 
+        public static DataTable readExcel2(string fname)
+        {
+            DataTable dt = new DataTable(Path.GetFileName(fname));
+            string connStr = "";
+            string fileType = System.IO.Path.GetExtension(fname);
+            if (string.IsNullOrEmpty(fileType))
+            {
+                return null;
+            }
+
+            if (fileType == ".xls")
+                connStr = "Provider=Microsoft.Jet.OLEDB.4.0;" + "Data Source=" + fname + ";" + ";Extended Properties=\"Excel 8.0;HDR=YES;IMEX=1\"";
+            else
+                connStr = "Provider=Microsoft.ACE.OLEDB.12.0;" + "Data Source=" + fname + ";" + ";Extended Properties=\"Excel 12.0;HDR=YES;IMEX=1\"";
+            string sql_F = "Select ID,DEFAULT_MON_UNIT FROM [{0}]";
+
+            OleDbConnection conn = null;
+            OleDbDataAdapter da = null;
+            DataTable dtSheetName = null;
+            try
+            {
+                // 初始化连接，并打开
+                conn = new OleDbConnection(connStr);
+                conn.Open();
+                // 获取数据源的表定义元数据                        
+                string SheetName = "";
+                dtSheetName = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, new object[] { null, null, null, "TABLE" });
+                // 初始化适配器
+                da = new OleDbDataAdapter();
+                for (int i = 0; i < dtSheetName.Rows.Count; i++)
+                {
+                    SheetName = (string)dtSheetName.Rows[i]["TABLE_NAME"];
+                    if (SheetName.Contains("$") && !SheetName.Replace("'", "").EndsWith("$"))
+                    {
+                        continue;
+                    }
+                    da.SelectCommand = new OleDbCommand(String.Format(sql_F, SheetName), conn);
+                    DataSet dsItem = new DataSet();
+                    da.Fill(dsItem, SheetName);
+                    dt = dsItem.Tables[0].Copy();
+                    break;
+                }
+                int tt = 0;
+                while (true)
+                {
+                    if (dt.Columns[tt].ColumnName != "DEFAULT_MON_UNIT" && dt.Columns[tt].ColumnName != "ID")
+                    {
+                        dt.Columns.Remove(dt.Columns[tt].ColumnName);
+                    }
+                    else
+                    {
+                        tt++;
+                    }
+                    if (dt.Columns.Count == 2) break;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.ToString());
+            }
+            finally
+            {
+                // 关闭连接
+                if (conn.State == ConnectionState.Open)
+                {
+                    conn.Close();
+                    da.Dispose();
+                    conn.Dispose();
+                }
+            }
+            DataTable dt2 = new DataTable();
+            dt2.Columns.Add("id");
+            dt2.Columns.Add("type1");
+            dt2.Columns.Add("x");
+            dt2.Columns.Add("y");
+            dt2.Columns.Add("type2");
+            dt2.Columns.Add("x1");
+            dt2.Columns.Add("y1");
+            dt2.Columns.Add("x2");
+            dt2.Columns.Add("y2");
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                string tmpstr = dt.Rows[i]["DEFAULT_MON_UNIT"].ToString();
+                string[] tmpstrarr = tmpstr.Split('/');
+                for (int j = 0; j < tmpstrarr.Count(); j++)
+                {
+                    DataRow dr = dt2.NewRow();
+                    dr["id"] = dt.Rows[i]["ID"];
+                    if (tmpstrarr[j].Length <= 0)
+                    {
+                        continue;
+                    }
+                    string[] tmpstrarr2 = tmpstrarr[j].Split(',');
+                    if (tmpstrarr2.Count() > 3)
+                    {
+                        dr["type2"] = tmpstrarr2[0];
+                        dr["x1"] = tmpstrarr2[1];
+                        dr["y1"] = tmpstrarr2[2];
+                        dr["x2"] = tmpstrarr2[3];
+                        if (tmpstrarr2.Count() > 4)
+                            dr["y2"] = tmpstrarr2[4];
+                    }
+                    else
+                    {
+                        dr["type1"] = tmpstrarr2[0];
+                        dr["x"] = tmpstrarr2[1];
+                        dr["y"] = tmpstrarr2[2];
+                    }
+                    dt2.Rows.Add(dr);
+                }
+            }
+            return dt2;
+        }
+
         public static DataTable readJson(string fname)
         {
-            /*string buffer = null;
+            DataTable dt = new DataTable(Path.GetFileName(fname));
+            string buffer = null;
             buffer = File.ReadAllText(fname);
             JObject jo = JsonConvert.DeserializeObject(buffer) as JObject;
             var s = from p in jo.Children()
                 select p;
-            foreach (var item in s)
+            /*foreach (var item in s)
             {
                 //as a row
-                JObject subjo = item as JObject;
-                var subs = from p in subjo.Children()
-                    select p;
-                foreach (var subitem in s)
+                JToken record = item as JToken;
+                foreach (var subitem in record)
                 {
                     //as a cell
                     MessageBox.Show(subitem.ToString());
