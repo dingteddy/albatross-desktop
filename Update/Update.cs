@@ -156,7 +156,7 @@ namespace Update
             }
             catch (Exception ex)
             {
-                throw new Exception("更新出现错误，请确认网络连接无误后重试！");
+                throw new Exception("更新出现错误，请确认网络连接无误后重试！"+ex.ToString());
             }
         }
 

@@ -33,10 +33,13 @@
             this.openToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.openToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
             this.saveToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.dbDToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.重新加载RToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.保存XMLToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.保存EXCELToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.编辑RToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.撤销ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.重做ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.配置PToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.配置PToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
             this.dgview = new System.Windows.Forms.DataGridView();
@@ -51,7 +54,7 @@
             this.toolStripStatusLabel3 = new System.Windows.Forms.ToolStripStatusLabel();
             this.panel1 = new System.Windows.Forms.Panel();
             this.webBrowser1 = new System.Windows.Forms.WebBrowser();
-            this.转换工具VToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.转换工具TToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgview)).BeginInit();
             this.contextMenuStrip1.SuspendLayout();
@@ -76,6 +79,7 @@
             this.openToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.openToolStripMenuItem1,
             this.saveToolStripMenuItem,
+            this.dbDToolStripMenuItem,
             this.重新加载RToolStripMenuItem,
             this.保存XMLToolStripMenuItem,
             this.保存EXCELToolStripMenuItem});
@@ -98,6 +102,13 @@
             this.saveToolStripMenuItem.Size = new System.Drawing.Size(204, 22);
             this.saveToolStripMenuItem.Text = "另存为(&S)...";
             this.saveToolStripMenuItem.Click += new System.EventHandler(this.saveBtn_Click);
+            // 
+            // dbDToolStripMenuItem
+            // 
+            this.dbDToolStripMenuItem.Name = "dbDToolStripMenuItem";
+            this.dbDToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.B)));
+            this.dbDToolStripMenuItem.Size = new System.Drawing.Size(204, 22);
+            this.dbDToolStripMenuItem.Text = "数据库(&D)";
             // 
             // 重新加载RToolStripMenuItem
             // 
@@ -125,15 +136,32 @@
             // 
             // 编辑RToolStripMenuItem
             // 
+            this.编辑RToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.撤销ToolStripMenuItem,
+            this.重做ToolStripMenuItem});
             this.编辑RToolStripMenuItem.Name = "编辑RToolStripMenuItem";
             this.编辑RToolStripMenuItem.Size = new System.Drawing.Size(60, 21);
             this.编辑RToolStripMenuItem.Text = "编辑(&R)";
+            // 
+            // 撤销ToolStripMenuItem
+            // 
+            this.撤销ToolStripMenuItem.Name = "撤销ToolStripMenuItem";
+            this.撤销ToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Z)));
+            this.撤销ToolStripMenuItem.Size = new System.Drawing.Size(144, 22);
+            this.撤销ToolStripMenuItem.Text = "撤销";
+            // 
+            // 重做ToolStripMenuItem
+            // 
+            this.重做ToolStripMenuItem.Name = "重做ToolStripMenuItem";
+            this.重做ToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Y)));
+            this.重做ToolStripMenuItem.Size = new System.Drawing.Size(144, 22);
+            this.重做ToolStripMenuItem.Text = "重做";
             // 
             // 配置PToolStripMenuItem
             // 
             this.配置PToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.配置PToolStripMenuItem1,
-            this.转换工具VToolStripMenuItem});
+            this.转换工具TToolStripMenuItem});
             this.配置PToolStripMenuItem.Name = "配置PToolStripMenuItem";
             this.配置PToolStripMenuItem.Size = new System.Drawing.Size(59, 21);
             this.配置PToolStripMenuItem.Text = "工具(&T)";
@@ -152,7 +180,7 @@
             this.dgview.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.AllCells;
             this.dgview.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dgview.ContextMenuStrip = this.contextMenuStrip1;
-            this.dgview.Location = new System.Drawing.Point(153, 42);
+            this.dgview.Location = new System.Drawing.Point(39, 32);
             this.dgview.Name = "dgview";
             this.dgview.RowTemplate.Height = 23;
             this.dgview.Size = new System.Drawing.Size(48, 76);
@@ -192,7 +220,7 @@
             // 
             // progressBar1
             // 
-            this.progressBar1.Location = new System.Drawing.Point(299, 137);
+            this.progressBar1.Location = new System.Drawing.Point(63, 123);
             this.progressBar1.Name = "progressBar1";
             this.progressBar1.Size = new System.Drawing.Size(100, 23);
             this.progressBar1.TabIndex = 5;
@@ -236,28 +264,29 @@
             this.panel1.BackColor = System.Drawing.SystemColors.Control;
             this.panel1.Controls.Add(this.dgview);
             this.panel1.Controls.Add(this.progressBar1);
-            this.panel1.Location = new System.Drawing.Point(0, 267);
+            this.panel1.Location = new System.Drawing.Point(52, 128);
+            this.panel1.Margin = new System.Windows.Forms.Padding(0);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(333, 183);
+            this.panel1.Size = new System.Drawing.Size(301, 223);
             this.panel1.TabIndex = 7;
             this.panel1.Visible = false;
             // 
             // webBrowser1
             // 
-            this.webBrowser1.Location = new System.Drawing.Point(412, 102);
+            this.webBrowser1.Location = new System.Drawing.Point(553, 251);
             this.webBrowser1.MinimumSize = new System.Drawing.Size(20, 20);
             this.webBrowser1.Name = "webBrowser1";
-            this.webBrowser1.Size = new System.Drawing.Size(250, 250);
+            this.webBrowser1.Size = new System.Drawing.Size(149, 113);
             this.webBrowser1.TabIndex = 8;
             this.webBrowser1.Visible = false;
             // 
-            // 转换工具VToolStripMenuItem
+            // 转换工具TToolStripMenuItem
             // 
-            this.转换工具VToolStripMenuItem.Name = "转换工具VToolStripMenuItem";
-            this.转换工具VToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.T)));
-            this.转换工具VToolStripMenuItem.Size = new System.Drawing.Size(183, 22);
-            this.转换工具VToolStripMenuItem.Text = "转换工具(&T)";
-            this.转换工具VToolStripMenuItem.Click += new System.EventHandler(this.convertVToolStripMenuItem_Click);
+            this.转换工具TToolStripMenuItem.Name = "转换工具TToolStripMenuItem";
+            this.转换工具TToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.T)));
+            this.转换工具TToolStripMenuItem.Size = new System.Drawing.Size(183, 22);
+            this.转换工具TToolStripMenuItem.Text = "转换工具(&T)";
+            this.转换工具TToolStripMenuItem.Click += new System.EventHandler(this.convertVToolStripMenuItem_Click);
             // 
             // MainForm
             // 
@@ -266,8 +295,8 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoValidate = System.Windows.Forms.AutoValidate.EnablePreventFocusChange;
             this.ClientSize = new System.Drawing.Size(785, 472);
-            this.Controls.Add(this.webBrowser1);
             this.Controls.Add(this.panel1);
+            this.Controls.Add(this.webBrowser1);
             this.Controls.Add(this.statusStrip1);
             this.Controls.Add(this.menuStrip1);
             this.KeyPreview = true;
@@ -313,7 +342,10 @@
         private System.Windows.Forms.ToolStripMenuItem 保存EXCELToolStripMenuItem;
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.WebBrowser webBrowser1;
-        private System.Windows.Forms.ToolStripMenuItem 转换工具VToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem dbDToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 撤销ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 重做ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 转换工具TToolStripMenuItem;
 
     }
 }

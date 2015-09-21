@@ -17,6 +17,8 @@ using System.Reflection;
 using System.Xml.Linq;
 using System.Collections;
 using System.Data.OleDb;
+using MySql.Data;
+using MySql.Data.MySqlClient;
 
 namespace albatross_desktop
 {
@@ -48,6 +50,7 @@ namespace albatross_desktop
         StreamWriter g_swWriter = null;
         StreamReader g_srReader = null;
         LogForm g_logform;
+        MySqlConnection mycon = null;
 
         #region "datagridview keyboard operations"
         ArrayList g_copiedRowIndices = new ArrayList();
@@ -71,11 +74,52 @@ namespace albatross_desktop
             g_fsFile = new FileStream(g_logFile, FileMode.OpenOrCreate);
             g_swWriter = new StreamWriter(g_fsFile);
             g_srReader = new StreamReader(g_fsFile);
+            //this.WindowState = FormWindowState.Maximized;
             //Application.ApplicationExit += new EventHandler(Application_ApplicationExit);
-
-            //g_currFileName = @"e:\\type_card.xml";
+            //open db
+            try
+            {
+                string connstr = "server=" + Config.ReadIniKey("db", "host", g_iniFile) + ";";
+                connstr += "User Id=" + Config.ReadIniKey("db", "user", g_iniFile) + ";";
+                connstr += "password=" + Config.ReadIniKey("db", "pwd", g_iniFile) + ";";
+                connstr += "Database=" + Config.ReadIniKey("db", "dbname", g_iniFile);
+                mycon = new MySqlConnection(connstr);
+                mycon.Open();
+                //add sub menu
+                ArrayList tmplist = new ArrayList();
+                getDbData("show tables;", tmplist, null);
+                foreach (ArrayList row in tmplist)
+                {
+                    foreach (string col in row)
+                    {
+                        dbDToolStripMenuItem.DropDownItems.Add(col, null, dbMenuClicked);
+                    }
+                }
+            } 
+            catch (Exception ex)
+            {
+                MessageBox.Show("db error: " + ex.ToString());
+            }
+            //g_currFileName = @"d:\\type_copys_main.xml";
             //processFile(g_currFileName);
+        }
+
+        void dbMenuClicked(object sender, EventArgs e)
+        {
+            panel1.Visible = true;
+            panel1.Dock = DockStyle.Fill;
+            dgview.Dock = DockStyle.Fill;
+            dgview.Visible = true;
+            dgview.Rows.Clear();
+            dgview.Columns.Clear();
             this.WindowState = FormWindowState.Maximized;
+            ToolStripDropDownItem item = sender as ToolStripDropDownItem;
+            //MessageBox.Show(item.Text);
+            //get data from table
+            ArrayList tmplist = new ArrayList();
+            ArrayList tmpcolnamelist = new ArrayList();
+            getDbData("select * from "+item.Text, tmplist, tmpcolnamelist);
+            readDbData(tmplist, tmpcolnamelist);
         }
 
         #region "app updater"
@@ -141,6 +185,16 @@ namespace albatross_desktop
                 dgview.DataSource = null;
                 dgview.DataSource = g_dt;
             }
+            else if (ext.Equals(".txt"))
+            {
+                panel1.Visible = true;
+                panel1.Dock = DockStyle.Fill;
+                dgview.Dock = DockStyle.Fill;
+                dgview.Visible = true;
+                g_dt = FileOpClass.readJson(fname);
+                dgview.DataSource = null;
+                dgview.DataSource = g_dt;
+            }
             return 0;
         }
 
@@ -168,189 +222,22 @@ namespace albatross_desktop
                     string ext = Path.GetExtension(FileName);
                     if (ext.Equals(".xml"))
                     {
-                        saveXml(FileName);
+                        FileOpClass.saveXml(FileName, g_dt);
                     }
                     else if (ext.Equals(".xls"))
                     {
-                        saveExcel03(savedlg);
+                        FileOpClass.saveExcel03(savedlg, g_dt);
                     }
                     else if (ext.Equals(".xlsx"))
                     {
-                        saveExcel03(FileName);
+                        FileOpClass.saveExcel07(FileName, g_dt);
                     }
-
                 }
             }
             return;
         }
 
-        private void saveXml(string fname)
-        {
-            /*progressBar1.Visible = true;
-            ds.WriteXml(fname);
-            for (int i = 0; i < ds.Tables[0].Rows.Count; i++)
-            {
-                progressBar1.Value += 100 / ds.Tables[0].Rows.Count;
-            }
-            MessageBox.Show("数据已经成功导出到<" + fname, ">导出完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            progressBar1.Value = 0;
-            progressBar1.Visible = false;*/
-            //1、创建XML对象
-            XDocument xdocument = new XDocument(
-                new XDeclaration("1.0", "utf-8", "yes"),
-                new XComment("this is comment region"));
-            //2、创建跟节点
-            XElement eRoot = new XElement("basenode");
-            //添加到xdoc中
-            xdocument.Add(eRoot);
-            //3、添加子节点
-            for (int j = 0; j < g_dt.Rows.Count; j++)
-            {
-                XElement ele1 = new XElement("node");
-                //ele1.Value = "内容1";
-                eRoot.Add(ele1);
-                for (int k = 0; k < g_dt.Columns.Count; k++)
-                {
-                    //4、为ele1节点添加属性
-                    XAttribute attr = new XAttribute(g_dt.Columns[k].ColumnName, g_dt.Rows[j][g_dt.Columns[k].ColumnName].ToString());
-                    ele1.Add(attr);
-                }
-            }
-            //5、快速添加子节点方法
-            //eRoot.SetElementValue("子节点2", "内容2");
-            //6、快速添加属性
-            //ele1.SetAttributeValue("id", 12);
-            //7、最后保存到文件，也可以写入到流中。
-            xdocument.Save(fname);
-        }
-
-        private void saveExcel03(object obj)
-        {
-            SaveFileDialog saveFileDialog = obj as SaveFileDialog;
-            Stream myStream;
-            myStream = saveFileDialog.OpenFile();
-            //StreamWriter sw = new StreamWriter(myStream, System.Text.Encoding.GetEncoding("gb2312"));
-            StreamWriter sw = new StreamWriter(myStream, System.Text.Encoding.GetEncoding(-0));
-            string str = "";
-            try
-            {
-                //写标题
-                for (int i = 0; i < g_dt.Columns.Count; i++)
-                {
-                    if (i > 0)
-                    {
-                        str += "\t";
-                    }
-                    str += g_dt.Columns[i].ColumnName;
-                }
-                sw.WriteLine(str);
-                //写内容
-                for (int j = 0; j < g_dt.Rows.Count; j++)
-                {
-                    string tempStr = "";
-                    for (int k = 0; k < g_dt.Columns.Count; k++)
-                    {
-                        if (k > 0)
-                        {
-                            tempStr += "\t";
-                        }
-                        tempStr += g_dt.Rows[j][g_dt.Columns[k].ColumnName].ToString();
-                    }
-
-                    sw.WriteLine(tempStr);
-                }
-                sw.Close();
-                myStream.Close();
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show(e.ToString());
-            }
-            finally
-            {
-                sw.Close();
-                myStream.Close();
-            }
-        }
-
-        public bool saveExcel07(string fileName, bool isShowExcel = false)
-        {
-            Microsoft.Office.Interop.Excel.Application app = new Microsoft.Office.Interop.Excel.Application();
-            try
-            {
-                if (app == null)
-                {
-                    return false;
-                }
-
-                app.Visible = isShowExcel;
-                Excel.Workbooks workbooks = app.Workbooks;
-                Excel._Workbook workbook = workbooks.Add(Excel.XlWBATemplate.xlWBATWorksheet);
-                Excel.Sheets sheets = workbook.Worksheets;
-                Excel._Worksheet worksheet = (Excel._Worksheet)sheets.get_Item(1);
-                if (worksheet == null)
-                {
-                    return false;
-                }
-                string sLen = "";
-                //取得最后一列列名
-                char H = (char)(64 + g_dt.Columns.Count / 26);
-                char L = (char)(64 + g_dt.Columns.Count % 26);
-                if (g_dt.Columns.Count < 26)
-                {
-                    sLen = L.ToString();
-                }
-                else
-                {
-                    sLen = H.ToString() + L.ToString();
-                }
-
-
-                //标题
-                string sTmp = sLen + "1";
-                Excel.Range ranCaption = worksheet.get_Range(sTmp, "A1");
-                string[] asCaption = new string[g_dt.Columns.Count];
-                for (int i = 0; i < g_dt.Columns.Count; i++)
-                {
-                    asCaption[i] = g_dt.Columns[i].ColumnName;
-                }
-                ranCaption.Value2 = asCaption;
-
-                //数据
-                object[] obj = new object[g_dt.Columns.Count];
-                for (int r = 0; r < g_dt.Rows.Count - 1; r++)
-                {
-                    for (int l = 0; l < g_dt.Columns.Count; l++)
-                    {
-                        //if (g_dt.Rows[r][g_dt.Columns[l].ColumnName].GetType() == typeof(DateTime))
-                        //if (g_dt[l, r].ValueType == typeof(DateTime))
-                        //{
-                            //obj[l] = g_dt[l, r].Value.ToString();
-                            obj[l] = g_dt.Rows[r][g_dt.Columns[l].ColumnName].ToString();
-                        //}
-                        //else
-                        //{
-                        //    obj[l] = g_dt.Rows[j][g_dt.Columns[k].ColumnName];
-                        //}
-                    }
-                    string cell1 = sLen + ((int)(r + 2)).ToString();
-                    string cell2 = "A" + ((int)(r + 2)).ToString();
-                    Excel.Range ran = worksheet.get_Range(cell1, cell2);
-                    ran.Value2 = obj;
-                }
-                //保存
-                workbook.SaveCopyAs(fileName);
-                workbook.Saved = true;
-            }
-            finally
-            {
-                //关闭
-                app.UserControl = false;
-                app.Quit();
-            }
-            return true;
-        }
-
+        #region "webbrowser"
         private void openExcel(string sFileName)
         {
             webBrowser1.Visible = true;
@@ -411,6 +298,7 @@ namespace albatross_desktop
                 o = null;
             }
         }
+        #endregion
 
         public void CloseExcelApplication()
         {
@@ -543,7 +431,70 @@ namespace albatross_desktop
             }
             return true;
         }
-        
+
+        #region "DB"
+        private void getDbData(string sql, ArrayList list, ArrayList colnamelist)
+        {
+            MySqlCommand mycmd = new MySqlCommand(sql, mycon);
+            MySqlDataReader reader = mycmd.ExecuteReader();
+            try
+            {
+                bool getcolnames = false;
+                while (reader.Read())
+                {
+                    if (reader.HasRows)
+                    {
+                        ArrayList sublist = new ArrayList();
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            if (reader.IsDBNull(i))
+                            {
+                                sublist.Add("");
+                            }
+                            else
+                            {
+                                sublist.Add(reader.GetString(i));
+                            }
+                            if (!getcolnames && colnamelist != null)
+                            {
+                                colnamelist.Add(reader.GetName(i));
+                            }
+                        }
+                        list.Add(sublist);
+                        getcolnames = true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("查询失败: "+ex.ToString());
+            }
+            finally
+            {
+                reader.Close();
+            }
+        }
+
+        private void readDbData(ArrayList datalist, ArrayList colnamelist)
+        {
+            foreach (var colname in colnamelist)
+            {
+                dgview.Columns.Add(colname.ToString(), colname.ToString());
+            }
+            foreach (var data in datalist)
+            {
+                int index = dgview.Rows.Add();
+                int i = 0;
+                ArrayList tmplist = data as ArrayList;
+                foreach (var attr in tmplist)
+                {
+                    dgview.Rows[index].Cells[i].Value = attr.ToString();
+                    i++;
+                }
+            }
+        }
+        #endregion
+
         private void copyOperation()
         {
             ClearLog();
@@ -829,14 +780,14 @@ namespace albatross_desktop
         private void saveXMLToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ClearLog();
-            saveXml(Config.ReadIniKey("path", "xml", g_iniFile) + "\\" + Path.GetFileNameWithoutExtension(g_currFileName) + ".xml");
+            FileOpClass.saveXml(Config.ReadIniKey("path", "xml", g_iniFile) + "\\" + Path.GetFileNameWithoutExtension(g_currFileName) + ".xml", g_dt);
             Log(LOGLEVEL.INFO, "按下了Control + Shift + X来保存表格数据到指定目录的Xml。");
         }
 
         private void saveEXCELToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ClearLog();
-            saveExcel07(Config.ReadIniKey("path", "excel", g_iniFile) + "\\" + Path.GetFileNameWithoutExtension(g_currFileName) + ".xlsx");
+            FileOpClass.saveExcel07(Config.ReadIniKey("path", "excel", g_iniFile) + "\\" + Path.GetFileNameWithoutExtension(g_currFileName) + ".xlsx", g_dt);
             Log(LOGLEVEL.INFO, "按下了Control + Shift + E来保存表格数据到指定目录的Excel。");
         }
 

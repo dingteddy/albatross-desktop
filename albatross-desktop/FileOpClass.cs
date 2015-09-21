@@ -11,6 +11,8 @@ using System.Reflection;
 using System.Collections;
 using System.Data.OleDb;
 using System.Windows.Forms;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace albatross_desktop
 {
@@ -102,8 +104,30 @@ namespace albatross_desktop
             return dt;
         }
 
-        //save
-        private void saveXml(string fname, DataTable dt)
+        public static DataTable readJson(string fname)
+        {
+            /*string buffer = null;
+            buffer = File.ReadAllText(fname);
+            JObject jo = JsonConvert.DeserializeObject(buffer) as JObject;
+            var s = from p in jo.Children()
+                select p;
+            foreach (var item in s)
+            {
+                //as a row
+                JObject subjo = item as JObject;
+                var subs = from p in subjo.Children()
+                    select p;
+                foreach (var subitem in s)
+                {
+                    //as a cell
+                    MessageBox.Show(subitem.ToString());
+                }
+            }*/
+            return null;
+        }
+
+        #region "save"
+        public static void saveXml(string fname, DataTable dt)
         {
             /*progressBar1.Visible = true;
             ds.WriteXml(fname);
@@ -143,7 +167,7 @@ namespace albatross_desktop
             xdocument.Save(fname);
         }
 
-        private void saveExcel03(object obj, DataTable dt)
+        public static void saveExcel03(object obj, DataTable dt)
         {
             SaveFileDialog saveFileDialog = obj as SaveFileDialog;
             Stream myStream;
@@ -192,7 +216,7 @@ namespace albatross_desktop
             }
         }
 
-        public bool saveExcel07(string fileName, DataTable dt, bool isShowExcel = false)
+        public static bool saveExcel07(string fileName, DataTable dt, bool isShowExcel = false)
         {
             Microsoft.Office.Interop.Excel.Application app = new Microsoft.Office.Interop.Excel.Application();
             try
@@ -269,5 +293,6 @@ namespace albatross_desktop
             }
             return true;
         }
+        #endregion
     }
 }
