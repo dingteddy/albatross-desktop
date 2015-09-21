@@ -224,20 +224,50 @@ namespace albatross_desktop
             DataTable dt = new DataTable(Path.GetFileName(fname));
             string buffer = null;
             buffer = File.ReadAllText(fname);
-            JObject jo = JsonConvert.DeserializeObject(buffer) as JObject;
-            var s = from p in jo.Children()
-                select p;
-            /*foreach (var item in s)
+            try
             {
-                //as a row
-                JToken record = item as JToken;
-                foreach (var subitem in record)
+                dt = JsonConvert.DeserializeObject<DataTable>(buffer);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("error when convert json: " + ex.ToString());
+                JObject jo = JsonConvert.DeserializeObject(buffer) as JObject;
+                var s = from p in jo.Children()
+                        select p;
+                bool gotheader = false;
+                List<string> strList = new List<string>();
+                foreach (var item in s)
                 {
-                    //as a cell
-                    MessageBox.Show(subitem.ToString());
+                    //as a row
+                    JToken record = item as JToken;
+                    foreach (var subitem in record)
+                    {
+                        int headerindex = 0;
+                        var subs = from q in subitem.Children()
+                                   select q;
+                        //header
+                        if (!gotheader)
+                        {
+                            foreach (var subsubitem in subs)
+                            {
+                                strList.Add(subsubitem.ToString());
+                                dt.Columns.Add(subsubitem.ToString());
+                            }
+                            gotheader = true;
+                            continue;
+                        }
+                        DataRow dr = dt.NewRow();
+                        //as a cell
+                        foreach (var subsubitem in subs)
+                        {
+                            dr[strList[headerindex]] = subsubitem.ToString();
+                            headerindex++;
+                        }
+                        dt.Rows.Add(dr);
+                    }
                 }
-            }*/
-            return null;
+            }
+            return dt;
         }
 
         #region "save"

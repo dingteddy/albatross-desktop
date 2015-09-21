@@ -100,7 +100,7 @@ namespace albatross_desktop
             {
                 MessageBox.Show("db error: " + ex.ToString());
             }*/
-            //g_currFileName = @"C:\Users\money_2\Desktop\data_round_client.txt.xls";
+            //g_currFileName = @"C:\Users\money_2\Desktop\风之灵配置表\2D88A4D3EE5441E940544DCF3FB0E0E2.txt";
             //processFile(g_currFileName);
         }
 
