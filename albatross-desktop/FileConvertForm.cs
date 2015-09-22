@@ -15,10 +15,10 @@ namespace albatross_desktop
 {
     public partial class FileConvertForm : Form
     {
-        MainForm m_parent;
+        StartForm m_parent;
         string srcPath;
         string[] srcFiles = null;
-        public FileConvertForm(MainForm parent)
+        public FileConvertForm(StartForm parent)
         {
             InitializeComponent();
 

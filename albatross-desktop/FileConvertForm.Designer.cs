@@ -28,15 +28,16 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FileConvertForm));
             this.listBox1 = new System.Windows.Forms.ListBox();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.文件FToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.打开OToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.配置PToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.操作AToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.转换RToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.targetFormatToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.清空ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.配置PToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.targetFormatToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.progressBar1 = new System.Windows.Forms.ProgressBar();
             this.label1 = new System.Windows.Forms.Label();
             this.menuStrip1.SuspendLayout();
@@ -79,17 +80,9 @@
             // 打开OToolStripMenuItem
             // 
             this.打开OToolStripMenuItem.Name = "打开OToolStripMenuItem";
-            this.打开OToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.打开OToolStripMenuItem.Size = new System.Drawing.Size(127, 22);
             this.打开OToolStripMenuItem.Text = "打开(&O)...";
             this.打开OToolStripMenuItem.Click += new System.EventHandler(this.打开OToolStripMenuItem_Click);
-            // 
-            // 配置PToolStripMenuItem
-            // 
-            this.配置PToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.targetFormatToolStripMenuItem});
-            this.配置PToolStripMenuItem.Name = "配置PToolStripMenuItem";
-            this.配置PToolStripMenuItem.Size = new System.Drawing.Size(59, 21);
-            this.配置PToolStripMenuItem.Text = "配置(&P)";
             // 
             // 操作AToolStripMenuItem
             // 
@@ -108,18 +101,26 @@
             this.转换RToolStripMenuItem.Text = "转换(&R)";
             this.转换RToolStripMenuItem.Click += new System.EventHandler(this.转换RToolStripMenuItem_Click);
             // 
-            // targetFormatToolStripMenuItem
-            // 
-            this.targetFormatToolStripMenuItem.Name = "targetFormatToolStripMenuItem";
-            this.targetFormatToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
-            this.targetFormatToolStripMenuItem.Text = "目标格式";
-            // 
             // 清空ToolStripMenuItem
             // 
             this.清空ToolStripMenuItem.Name = "清空ToolStripMenuItem";
-            this.清空ToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.清空ToolStripMenuItem.Size = new System.Drawing.Size(161, 22);
             this.清空ToolStripMenuItem.Text = "清空";
             this.清空ToolStripMenuItem.Click += new System.EventHandler(this.清空ToolStripMenuItem_Click);
+            // 
+            // 配置PToolStripMenuItem
+            // 
+            this.配置PToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.targetFormatToolStripMenuItem});
+            this.配置PToolStripMenuItem.Name = "配置PToolStripMenuItem";
+            this.配置PToolStripMenuItem.Size = new System.Drawing.Size(59, 21);
+            this.配置PToolStripMenuItem.Text = "配置(&P)";
+            // 
+            // targetFormatToolStripMenuItem
+            // 
+            this.targetFormatToolStripMenuItem.Name = "targetFormatToolStripMenuItem";
+            this.targetFormatToolStripMenuItem.Size = new System.Drawing.Size(124, 22);
+            this.targetFormatToolStripMenuItem.Text = "目标格式";
             // 
             // progressBar1
             // 
@@ -149,6 +150,7 @@
             this.Controls.Add(this.progressBar1);
             this.Controls.Add(this.listBox1);
             this.Controls.Add(this.menuStrip1);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MainMenuStrip = this.menuStrip1;
             this.Name = "FileConvertForm";
             this.Text = "file converter";

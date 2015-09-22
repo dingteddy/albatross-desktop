@@ -29,6 +29,7 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.openToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.openToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
@@ -38,6 +39,8 @@
             this.保存XMLToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.保存EXCELToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.编辑RToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.复制CToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.粘贴VToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.撤销ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.重做ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.配置PToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -47,19 +50,15 @@
             this.添加行ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.添加列ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.删除行ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.progressBar1 = new System.Windows.Forms.ProgressBar();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.statusInfo = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripStatusLabel2 = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripStatusLabel3 = new System.Windows.Forms.ToolStripStatusLabel();
-            this.panel1 = new System.Windows.Forms.Panel();
-            this.webBrowser1 = new System.Windows.Forms.WebBrowser();
-            this.转换工具TToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripProgressBar1 = new System.Windows.Forms.ToolStripProgressBar();
             this.menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgview)).BeginInit();
             this.contextMenuStrip1.SuspendLayout();
             this.statusStrip1.SuspendLayout();
-            this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
             // menuStrip1
@@ -137,31 +136,50 @@
             // 编辑RToolStripMenuItem
             // 
             this.编辑RToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.复制CToolStripMenuItem,
+            this.粘贴VToolStripMenuItem,
             this.撤销ToolStripMenuItem,
             this.重做ToolStripMenuItem});
             this.编辑RToolStripMenuItem.Name = "编辑RToolStripMenuItem";
             this.编辑RToolStripMenuItem.Size = new System.Drawing.Size(60, 21);
             this.编辑RToolStripMenuItem.Text = "编辑(&R)";
             // 
+            // 复制CToolStripMenuItem
+            // 
+            this.复制CToolStripMenuItem.Name = "复制CToolStripMenuItem";
+            this.复制CToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.C)));
+            this.复制CToolStripMenuItem.Size = new System.Drawing.Size(161, 22);
+            this.复制CToolStripMenuItem.Text = "复制(&C)";
+            this.复制CToolStripMenuItem.Click += new System.EventHandler(this.复制CToolStripMenuItem_Click);
+            // 
+            // 粘贴VToolStripMenuItem
+            // 
+            this.粘贴VToolStripMenuItem.Name = "粘贴VToolStripMenuItem";
+            this.粘贴VToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.V)));
+            this.粘贴VToolStripMenuItem.Size = new System.Drawing.Size(161, 22);
+            this.粘贴VToolStripMenuItem.Text = "粘贴(&V)";
+            this.粘贴VToolStripMenuItem.Click += new System.EventHandler(this.粘贴VToolStripMenuItem_Click);
+            // 
             // 撤销ToolStripMenuItem
             // 
             this.撤销ToolStripMenuItem.Name = "撤销ToolStripMenuItem";
             this.撤销ToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Z)));
-            this.撤销ToolStripMenuItem.Size = new System.Drawing.Size(144, 22);
-            this.撤销ToolStripMenuItem.Text = "撤销";
+            this.撤销ToolStripMenuItem.Size = new System.Drawing.Size(161, 22);
+            this.撤销ToolStripMenuItem.Text = "撤销(&Z)";
+            this.撤销ToolStripMenuItem.Click += new System.EventHandler(this.撤销ToolStripMenuItem_Click);
             // 
             // 重做ToolStripMenuItem
             // 
             this.重做ToolStripMenuItem.Name = "重做ToolStripMenuItem";
             this.重做ToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Y)));
-            this.重做ToolStripMenuItem.Size = new System.Drawing.Size(144, 22);
-            this.重做ToolStripMenuItem.Text = "重做";
+            this.重做ToolStripMenuItem.Size = new System.Drawing.Size(161, 22);
+            this.重做ToolStripMenuItem.Text = "重做(&U)";
+            this.重做ToolStripMenuItem.Click += new System.EventHandler(this.重做ToolStripMenuItem_Click);
             // 
             // 配置PToolStripMenuItem
             // 
             this.配置PToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.配置PToolStripMenuItem1,
-            this.转换工具TToolStripMenuItem});
+            this.配置PToolStripMenuItem1});
             this.配置PToolStripMenuItem.Name = "配置PToolStripMenuItem";
             this.配置PToolStripMenuItem.Size = new System.Drawing.Size(59, 21);
             this.配置PToolStripMenuItem.Text = "工具(&T)";
@@ -170,20 +188,20 @@
             // 
             this.配置PToolStripMenuItem1.Name = "配置PToolStripMenuItem1";
             this.配置PToolStripMenuItem1.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.P)));
-            this.配置PToolStripMenuItem1.Size = new System.Drawing.Size(183, 22);
+            this.配置PToolStripMenuItem1.Size = new System.Drawing.Size(159, 22);
             this.配置PToolStripMenuItem1.Text = "配置(&P)";
             this.配置PToolStripMenuItem1.Click += new System.EventHandler(this.ConfigToolStripMenuItem1_Click);
             // 
             // dgview
             // 
             this.dgview.AllowUserToAddRows = false;
-            this.dgview.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.AllCells;
             this.dgview.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dgview.ContextMenuStrip = this.contextMenuStrip1;
-            this.dgview.Location = new System.Drawing.Point(39, 32);
+            this.dgview.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.dgview.Location = new System.Drawing.Point(0, 25);
             this.dgview.Name = "dgview";
             this.dgview.RowTemplate.Height = 23;
-            this.dgview.Size = new System.Drawing.Size(48, 76);
+            this.dgview.Size = new System.Drawing.Size(785, 425);
             this.dgview.TabIndex = 4;
             this.dgview.Visible = false;
             this.dgview.CellBeginEdit += new System.Windows.Forms.DataGridViewCellCancelEventHandler(this.dgview_CellBeginEdit);
@@ -218,20 +236,13 @@
             this.删除行ToolStripMenuItem.Size = new System.Drawing.Size(129, 22);
             this.删除行ToolStripMenuItem.Text = "删除行(&D)";
             // 
-            // progressBar1
-            // 
-            this.progressBar1.Location = new System.Drawing.Point(63, 123);
-            this.progressBar1.Name = "progressBar1";
-            this.progressBar1.Size = new System.Drawing.Size(100, 23);
-            this.progressBar1.TabIndex = 5;
-            this.progressBar1.Visible = false;
-            // 
             // statusStrip1
             // 
             this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.statusInfo,
             this.toolStripStatusLabel2,
-            this.toolStripStatusLabel3});
+            this.toolStripStatusLabel3,
+            this.toolStripProgressBar1});
             this.statusStrip1.Location = new System.Drawing.Point(0, 450);
             this.statusStrip1.Name = "statusStrip1";
             this.statusStrip1.Size = new System.Drawing.Size(785, 22);
@@ -241,7 +252,7 @@
             // statusInfo
             // 
             this.statusInfo.Name = "statusInfo";
-            this.statusInfo.Size = new System.Drawing.Size(697, 17);
+            this.statusInfo.Size = new System.Drawing.Size(595, 17);
             this.statusInfo.Spring = true;
             this.statusInfo.Text = "info";
             this.statusInfo.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -259,34 +270,10 @@
             this.toolStripStatusLabel3.Size = new System.Drawing.Size(31, 17);
             this.toolStripStatusLabel3.Text = "N/A";
             // 
-            // panel1
+            // toolStripProgressBar1
             // 
-            this.panel1.BackColor = System.Drawing.SystemColors.Control;
-            this.panel1.Controls.Add(this.dgview);
-            this.panel1.Controls.Add(this.progressBar1);
-            this.panel1.Location = new System.Drawing.Point(52, 128);
-            this.panel1.Margin = new System.Windows.Forms.Padding(0);
-            this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(301, 223);
-            this.panel1.TabIndex = 7;
-            this.panel1.Visible = false;
-            // 
-            // webBrowser1
-            // 
-            this.webBrowser1.Location = new System.Drawing.Point(553, 251);
-            this.webBrowser1.MinimumSize = new System.Drawing.Size(20, 20);
-            this.webBrowser1.Name = "webBrowser1";
-            this.webBrowser1.Size = new System.Drawing.Size(149, 113);
-            this.webBrowser1.TabIndex = 8;
-            this.webBrowser1.Visible = false;
-            // 
-            // 转换工具TToolStripMenuItem
-            // 
-            this.转换工具TToolStripMenuItem.Name = "转换工具TToolStripMenuItem";
-            this.转换工具TToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.T)));
-            this.转换工具TToolStripMenuItem.Size = new System.Drawing.Size(183, 22);
-            this.转换工具TToolStripMenuItem.Text = "转换工具(&T)";
-            this.转换工具TToolStripMenuItem.Click += new System.EventHandler(this.convertVToolStripMenuItem_Click);
+            this.toolStripProgressBar1.Name = "toolStripProgressBar1";
+            this.toolStripProgressBar1.Size = new System.Drawing.Size(100, 16);
             // 
             // MainForm
             // 
@@ -295,13 +282,14 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoValidate = System.Windows.Forms.AutoValidate.EnablePreventFocusChange;
             this.ClientSize = new System.Drawing.Size(785, 472);
-            this.Controls.Add(this.panel1);
-            this.Controls.Add(this.webBrowser1);
+            this.Controls.Add(this.dgview);
             this.Controls.Add(this.statusStrip1);
             this.Controls.Add(this.menuStrip1);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.KeyPreview = true;
             this.MainMenuStrip = this.menuStrip1;
             this.Name = "MainForm";
+            this.Text = "data editor";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.MainForm_FormClosing);
             this.DragDrop += new System.Windows.Forms.DragEventHandler(this.MainForm_DragDrop);
             this.DragEnter += new System.Windows.Forms.DragEventHandler(this.MainForm_DragEnter);
@@ -312,7 +300,6 @@
             this.contextMenuStrip1.ResumeLayout(false);
             this.statusStrip1.ResumeLayout(false);
             this.statusStrip1.PerformLayout();
-            this.panel1.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -324,7 +311,6 @@
         private System.Windows.Forms.ToolStripMenuItem openToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem openToolStripMenuItem1;
         private System.Windows.Forms.DataGridView dgview;
-        private System.Windows.Forms.ProgressBar progressBar1;
         private System.Windows.Forms.ToolStripMenuItem saveToolStripMenuItem;
         private System.Windows.Forms.ContextMenuStrip contextMenuStrip1;
         private System.Windows.Forms.ToolStripMenuItem 添加行ToolStripMenuItem;
@@ -340,12 +326,12 @@
         private System.Windows.Forms.ToolStripMenuItem 编辑RToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 保存XMLToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 保存EXCELToolStripMenuItem;
-        private System.Windows.Forms.Panel panel1;
-        private System.Windows.Forms.WebBrowser webBrowser1;
         private System.Windows.Forms.ToolStripMenuItem dbDToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 撤销ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 重做ToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem 转换工具TToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 复制CToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 粘贴VToolStripMenuItem;
+        private System.Windows.Forms.ToolStripProgressBar toolStripProgressBar1;
 
     }
 }

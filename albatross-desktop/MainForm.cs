@@ -41,9 +41,7 @@ namespace albatross_desktop
     public partial class MainForm : Form
     {
         DataTable g_dt = null;
-        public string g_iniFile = System.IO.Directory.GetCurrentDirectory() + "\\conf.ini";
-        Excel.Workbook g_wbb = null;
-        Excel.Application g_eApp = null;
+        public string g_iniFile = System.IO.Directory.GetCurrentDirectory() + "\\config.ini";
         string g_currFileName = null;
         string g_logFile = System.IO.Directory.GetCurrentDirectory() + "\\errlog.txt";
         FileStream g_fsFile = null;
@@ -51,6 +49,7 @@ namespace albatross_desktop
         StreamReader g_srReader = null;
         LogForm g_logform;
         MySqlConnection mycon = null;
+        BackgroundWorker g_bgWorker = null;
 
         #region "datagridview keyboard operations"
         ArrayList g_copiedRowIndices = new ArrayList();
@@ -77,7 +76,7 @@ namespace albatross_desktop
             //this.WindowState = FormWindowState.Maximized;
             //Application.ApplicationExit += new EventHandler(Application_ApplicationExit);
             //open db
-            /*try
+            try
             {
                 string connstr = "server=" + Config.ReadIniKey("db", "host", g_iniFile) + ";";
                 connstr += "User Id=" + Config.ReadIniKey("db", "user", g_iniFile) + ";";
@@ -99,27 +98,45 @@ namespace albatross_desktop
             catch (Exception ex)
             {
                 MessageBox.Show("db error: " + ex.ToString());
-            }*/
+            }
+            g_bgWorker = new BackgroundWorker();
+            g_bgWorker.WorkerReportsProgress = true;
+            g_bgWorker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(bgworker_RunWorkerCompleted);
+            g_bgWorker.ProgressChanged += new ProgressChangedEventHandler(bgworker_ProgressChanged);
             //g_currFileName = @"C:\Users\money_2\Desktop\风之灵配置表\2D88A4D3EE5441E940544DCF3FB0E0E2.txt";
             //processFile(g_currFileName);
         }
 
-        void dbMenuClicked(object sender, EventArgs e)
+        private void bgworker_DoWork(object oj, DoWorkEventArgs e)
         {
-            panel1.Visible = true;
-            panel1.Dock = DockStyle.Fill;
-            dgview.Dock = DockStyle.Fill;
-            dgview.Visible = true;
-            dgview.Rows.Clear();
-            dgview.Columns.Clear();
-            this.WindowState = FormWindowState.Maximized;
-            ToolStripDropDownItem item = sender as ToolStripDropDownItem;
-            //MessageBox.Show(item.Text);
-            //get data from table
             ArrayList tmplist = new ArrayList();
             ArrayList tmpcolnamelist = new ArrayList();
-            getDbData("select * from "+item.Text, tmplist, tmpcolnamelist);
-            readDbData(tmplist, tmpcolnamelist);
+            getDbData("select * from " + e.Argument.ToString(), tmplist, tmpcolnamelist);
+            g_dt = readDbData(g_bgWorker, tmplist, tmpcolnamelist);
+        }
+
+        private void bgworker_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            toolStripProgressBar1.Value = e.ProgressPercentage;
+        }
+
+        private void bgworker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            //MessageBox.Show("finished!");
+            toolStripProgressBar1.Value = 100;
+            dgview.DataSource = null;
+            dgview.DataSource = g_dt;
+            forbidGridViewSort(null);
+            dgview.Dock = DockStyle.Fill;
+            dgview.Visible = true;
+        }
+
+        void dbMenuClicked(object sender, EventArgs e)
+        {
+            this.WindowState = FormWindowState.Maximized;
+            g_bgWorker.DoWork += new DoWorkEventHandler(bgworker_DoWork);
+            ToolStripDropDownItem item = sender as ToolStripDropDownItem;
+            g_bgWorker.RunWorkerAsync(item.Text);
         }
 
         #region "app updater"
@@ -167,33 +184,30 @@ namespace albatross_desktop
             string name = Path.GetFileName(fname);
             if (ext.Equals(".xml"))
             {
-                panel1.Visible = true;
-                panel1.Dock = DockStyle.Fill;
                 dgview.Dock = DockStyle.Fill;
                 dgview.Visible = true;
                 g_dt = FileOpClass.readXml(fname);
                 dgview.DataSource = null;
                 dgview.DataSource = g_dt;
+                forbidGridViewSort(null);
             }
             else if (ext.Equals(".xls") || ext.Equals(".xlsx"))
             {
-                panel1.Visible = true;
-                panel1.Dock = DockStyle.Fill;
                 dgview.Dock = DockStyle.Fill;
                 dgview.Visible = true;
                 g_dt = FileOpClass.readExcel(fname);
                 dgview.DataSource = null;
                 dgview.DataSource = g_dt;
+                forbidGridViewSort(null);
             }
             else if (ext.Equals(".txt"))
             {
-                panel1.Visible = true;
-                panel1.Dock = DockStyle.Fill;
                 dgview.Dock = DockStyle.Fill;
                 dgview.Visible = true;
                 g_dt = FileOpClass.readJson(fname);
                 dgview.DataSource = null;
                 dgview.DataSource = g_dt;
+                forbidGridViewSort(null);
             }
             return 0;
         }
@@ -237,101 +251,8 @@ namespace albatross_desktop
             return;
         }
 
-        #region "webbrowser"
-        private void openExcel(string sFileName)
-        {
-            webBrowser1.Visible = true;
-            webBrowser1.Dock = DockStyle.Fill;
-            //string strFileName = @"d:\test.xlsx";
-            Object refmissing = System.Reflection.Missing.Value;
-            webBrowser1.Navigate(sFileName);
-            object axWebBrowser = webBrowser1.ActiveXInstance;
-        }
-
-        private void webBrowser1_DocumentCompleted(object sender, WebBrowserDocumentCompletedEventArgs e)
-        {
-            string ext = Path.GetExtension(e.Url.ToString());
-            if (ext == ".xlsx" || ext == ".xls")
-            {
-                Object refmissing = System.Reflection.Missing.Value;
-                object[] args = new object[4];
-                //args[0] = SHDocVw.OLECMDID.OLECMDID_HIDETOOLBARS;
-                args[0] = refmissing;
-                args[1] = SHDocVw.OLECMDEXECOPT.OLECMDEXECOPT_DONTPROMPTUSER;
-                //此处SHDocVw需要添加此引用 c:/windows/system32/SHDocVw.dll
-                args[2] = refmissing;
-                args[3] = refmissing;
-                object axWebBrowser = webBrowser1.ActiveXInstance;
-                axWebBrowser.GetType().InvokeMember("ExecWB", BindingFlags.InvokeMethod, null, axWebBrowser, args);
-                object oApplication = axWebBrowser.GetType().InvokeMember("Document", BindingFlags.GetProperty, null, axWebBrowser, null);
-                //此处BindingFlags需要添加 using System.Reflection;
-
-                //wbb = (Excel.Workbook)oApplication;//wbb和eApp需要在一个全局变量里声明，以便可以回收
-
-                g_eApp = ((Excel.Workbook)oApplication).Application;
-                g_wbb = g_eApp.Workbooks[1];
-                Excel.Worksheet ws = g_wbb.Worksheets[1] as Excel.Worksheet;
-                ws.Cells.Font.Name = "Verdana";
-                ws.Cells.Font.Size = 14;
-                ws.Cells.Font.Bold = true;
-                Excel.Range range = ws.Cells;
-                Excel.Range oCell = range[10, 10] as Excel.Range;
-                oCell.Value2 = "你好";
-            }
-            else
-            {
-                MessageBox.Show(e.Url.ToString());
-            }
-        }
-
-        private void NAR(Object o)
-        {
-            try
-            {
-                System.Runtime.InteropServices.Marshal.ReleaseComObject(o);
-            }
-            catch
-            {
-            }
-            finally
-            {
-                o = null;
-            }
-        }
-        #endregion
-
-        public void CloseExcelApplication()
-        {
-            try
-            {
-                /*for (int i = 0; i < wbb.Worksheets.Count; i++)
-                {
-                    NAR(wbb.Worksheets[i] as Excel.Worksheet);
-                }*/
-                if (null != g_wbb)
-                {
-                    g_wbb.Close(false);
-                    NAR(g_wbb);
-                }
-                if (null != g_eApp)
-                {
-                    g_eApp.Quit();
-                    NAR(g_eApp);
-                }
-
-            }
-            finally
-            {
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-                //GC.Collect();
-                //GC.WaitForPendingFinalizers();
-            }
-        }
-
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            CloseExcelApplication();
             g_swWriter.Close();
         }
 
@@ -475,23 +396,36 @@ namespace albatross_desktop
             }
         }
 
-        private void readDbData(ArrayList datalist, ArrayList colnamelist)
+        private DataTable readDbData(object o, ArrayList datalist, ArrayList colnamelist)
         {
+            BackgroundWorker worker = o as BackgroundWorker;
+            DataTable dt = new DataTable();
             foreach (var colname in colnamelist)
             {
-                dgview.Columns.Add(colname.ToString(), colname.ToString());
+                dt.Columns.Add(colname.ToString());
             }
+            int prog = 0;
+            int zprog = 0;
             foreach (var data in datalist)
             {
-                int index = dgview.Rows.Add();
+                prog++;
+                zprog++;
+                if (datalist.Count/zprog <= 100)
+                {
+                    worker.ReportProgress(prog*100/datalist.Count);
+                    zprog = 0;
+                }
+                DataRow dr = dt.NewRow();
                 int i = 0;
                 ArrayList tmplist = data as ArrayList;
                 foreach (var attr in tmplist)
                 {
-                    dgview.Rows[index].Cells[i].Value = attr.ToString();
+                    dr[colnamelist[i].ToString()] = attr.ToString();
                     i++;
                 }
+                dt.Rows.Add(dr);
             }
+            return dt;
         }
         #endregion
 
@@ -722,7 +656,7 @@ namespace albatross_desktop
 
         private void MainForm_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Modifiers == Keys.Control && e.KeyCode == Keys.C) //copy
+            /*if (e.Modifiers == Keys.Control && e.KeyCode == Keys.C) //copy
             {
                 copyOperation();
             }
@@ -737,7 +671,7 @@ namespace albatross_desktop
             else if (e.Modifiers == Keys.Control && e.KeyCode == Keys.Y)
             {
                 redoOperation();
-            }
+            }*/
         }
 
         /*protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -834,15 +768,40 @@ namespace albatross_desktop
             list.Add(celllog);
         }
 
-        private void convertVToolStripMenuItem_Click(object sender, EventArgs e)
+        private void 复制CToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            FileConvertForm fcf = new FileConvertForm(this);
-            this.Hide();
-            fcf.WindowState = FormWindowState.Maximized;
-            fcf.ShowDialog();
-            this.Show();
+            copyOperation();
         }
 
+        private void 粘贴VToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            pasteOperation();
+        }
+
+        private void 撤销ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            undoOperation();
+        }
+
+        private void 重做ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            redoOperation();
+        }
+
+        private void forbidGridViewSort(ArrayList exclude)
+        {
+            if (dgview.Rows.Count < 100)
+            {
+                return;
+            }
+            for (int i = 0; i < dgview.Columns.Count; i++)
+            {
+                if (exclude != null && exclude.Count>0 && exclude.IndexOf(dgview.Columns[i].Name) < 0)
+                {
+                    dgview.Columns[i].SortMode = DataGridViewColumnSortMode.NotSortable;
+                }
+            }
+        }
         /*private void Application_ApplicationExit(object sender, EventArgs e)
         {
             CloseExcelApplication();
