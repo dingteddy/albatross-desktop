@@ -230,8 +230,12 @@ namespace albatross_desktop
             }
             catch (Exception ex)
             {
-                MessageBox.Show("error when convert json: " + ex.ToString());
+                //MessageBox.Show("error when convert json: " + ex.ToString());
                 JObject jo = JsonConvert.DeserializeObject(buffer) as JObject;
+                if (jo == null)
+                {
+                    return null;
+                }
                 var s = from p in jo.Children()
                         select p;
                 bool gotheader = false;
@@ -250,8 +254,17 @@ namespace albatross_desktop
                         {
                             foreach (var subsubitem in subs)
                             {
-                                strList.Add(subsubitem.ToString());
-                                dt.Columns.Add(subsubitem.ToString());
+                                //if colname exists
+                                if (strList.IndexOf(subsubitem.ToString())>=0)
+                                {
+                                    strList.Add(subsubitem.ToString()+"2");
+                                    dt.Columns.Add(subsubitem.ToString()+"2");
+                                }
+                                else
+                                {
+                                    strList.Add(subsubitem.ToString());
+                                    dt.Columns.Add(subsubitem.ToString());
+                                }
                             }
                             gotheader = true;
                             continue;
