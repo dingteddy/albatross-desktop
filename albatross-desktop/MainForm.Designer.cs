@@ -47,14 +47,17 @@
             this.配置PToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
             this.dgview = new System.Windows.Forms.DataGridView();
             this.contextMenuStrip1 = new System.Windows.Forms.ContextMenuStrip(this.components);
-            this.添加行ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.添加列ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.删除行ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.粘贴列ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.statusInfo = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripStatusLabel2 = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripStatusLabel3 = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripProgressBar1 = new System.Windows.Forms.ToolStripProgressBar();
+            this.插入列ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.插入行ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.删除列ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.删除行ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgview)).BeginInit();
             this.contextMenuStrip1.SuspendLayout();
@@ -211,30 +214,32 @@
             // contextMenuStrip1
             // 
             this.contextMenuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.添加行ToolStripMenuItem,
             this.添加列ToolStripMenuItem,
+            this.粘贴列ToolStripMenuItem,
+            this.插入列ToolStripMenuItem,
+            this.删除列ToolStripMenuItem,
+            this.插入行ToolStripMenuItem,
             this.删除行ToolStripMenuItem});
             this.contextMenuStrip1.Name = "contextMenuStrip1";
-            this.contextMenuStrip1.Size = new System.Drawing.Size(130, 70);
-            // 
-            // 添加行ToolStripMenuItem
-            // 
-            this.添加行ToolStripMenuItem.Name = "添加行ToolStripMenuItem";
-            this.添加行ToolStripMenuItem.Size = new System.Drawing.Size(129, 22);
-            this.添加行ToolStripMenuItem.Text = "添加行(&A)";
-            this.添加行ToolStripMenuItem.Click += new System.EventHandler(this.AddRowToolStripMenuItem_Click);
+            this.contextMenuStrip1.Size = new System.Drawing.Size(192, 158);
             // 
             // 添加列ToolStripMenuItem
             // 
             this.添加列ToolStripMenuItem.Name = "添加列ToolStripMenuItem";
-            this.添加列ToolStripMenuItem.Size = new System.Drawing.Size(129, 22);
-            this.添加列ToolStripMenuItem.Text = "添加列(&C)";
+            this.添加列ToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)(((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Shift) 
+            | System.Windows.Forms.Keys.C)));
+            this.添加列ToolStripMenuItem.Size = new System.Drawing.Size(191, 22);
+            this.添加列ToolStripMenuItem.Text = "复制列";
+            this.添加列ToolStripMenuItem.Click += new System.EventHandler(this.添加列ToolStripMenuItem_Click);
             // 
-            // 删除行ToolStripMenuItem
+            // 粘贴列ToolStripMenuItem
             // 
-            this.删除行ToolStripMenuItem.Name = "删除行ToolStripMenuItem";
-            this.删除行ToolStripMenuItem.Size = new System.Drawing.Size(129, 22);
-            this.删除行ToolStripMenuItem.Text = "删除行(&D)";
+            this.粘贴列ToolStripMenuItem.Name = "粘贴列ToolStripMenuItem";
+            this.粘贴列ToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)(((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Shift) 
+            | System.Windows.Forms.Keys.V)));
+            this.粘贴列ToolStripMenuItem.Size = new System.Drawing.Size(191, 22);
+            this.粘贴列ToolStripMenuItem.Text = "粘贴列";
+            this.粘贴列ToolStripMenuItem.Click += new System.EventHandler(this.粘贴列ToolStripMenuItem_Click);
             // 
             // statusStrip1
             // 
@@ -275,6 +280,37 @@
             this.toolStripProgressBar1.Name = "toolStripProgressBar1";
             this.toolStripProgressBar1.Size = new System.Drawing.Size(100, 16);
             // 
+            // 插入列ToolStripMenuItem
+            // 
+            this.插入列ToolStripMenuItem.Name = "插入列ToolStripMenuItem";
+            this.插入列ToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)(((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Shift) 
+            | System.Windows.Forms.Keys.I)));
+            this.插入列ToolStripMenuItem.Size = new System.Drawing.Size(191, 22);
+            this.插入列ToolStripMenuItem.Text = "插入列";
+            this.插入列ToolStripMenuItem.Click += new System.EventHandler(this.插入列ToolStripMenuItem_Click);
+            // 
+            // 插入行ToolStripMenuItem
+            // 
+            this.插入行ToolStripMenuItem.Name = "插入行ToolStripMenuItem";
+            this.插入行ToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.I)));
+            this.插入行ToolStripMenuItem.Size = new System.Drawing.Size(191, 22);
+            this.插入行ToolStripMenuItem.Text = "插入行";
+            this.插入行ToolStripMenuItem.Click += new System.EventHandler(this.插入行ToolStripMenuItem_Click);
+            // 
+            // 删除列ToolStripMenuItem
+            // 
+            this.删除列ToolStripMenuItem.Name = "删除列ToolStripMenuItem";
+            this.删除列ToolStripMenuItem.Size = new System.Drawing.Size(191, 22);
+            this.删除列ToolStripMenuItem.Text = "删除列";
+            this.删除列ToolStripMenuItem.Click += new System.EventHandler(this.删除列ToolStripMenuItem_Click);
+            // 
+            // 删除行ToolStripMenuItem
+            // 
+            this.删除行ToolStripMenuItem.Name = "删除行ToolStripMenuItem";
+            this.删除行ToolStripMenuItem.Size = new System.Drawing.Size(191, 22);
+            this.删除行ToolStripMenuItem.Text = "删除行";
+            this.删除行ToolStripMenuItem.Click += new System.EventHandler(this.删除行ToolStripMenuItem_Click);
+            // 
             // MainForm
             // 
             this.AllowDrop = true;
@@ -313,9 +349,7 @@
         private System.Windows.Forms.DataGridView dgview;
         private System.Windows.Forms.ToolStripMenuItem saveToolStripMenuItem;
         private System.Windows.Forms.ContextMenuStrip contextMenuStrip1;
-        private System.Windows.Forms.ToolStripMenuItem 添加行ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 添加列ToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem 删除行ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 配置PToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 配置PToolStripMenuItem1;
         private System.Windows.Forms.StatusStrip statusStrip1;
@@ -332,6 +366,11 @@
         private System.Windows.Forms.ToolStripMenuItem 复制CToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 粘贴VToolStripMenuItem;
         private System.Windows.Forms.ToolStripProgressBar toolStripProgressBar1;
+        private System.Windows.Forms.ToolStripMenuItem 粘贴列ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 插入列ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 插入行ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 删除列ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 删除行ToolStripMenuItem;
 
     }
 }

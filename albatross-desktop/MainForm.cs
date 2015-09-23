@@ -28,18 +28,46 @@ namespace albatross_desktop
         WARN = 2,
         ERROR = 3,
     }
-    public struct CellValueChangeLog
-    {
-        public string oldval;
-        public string newval;
-        public CellValueChangeLog(string o, string n)
-        {
-            oldval = o;
-            newval = n;
-        }
-    }
+    
     public partial class MainForm : Form
     {
+        public class CellValueChangeLog
+        {
+            public string oldval;
+            public string newval;
+            public CellValueChangeLog(string o, string n)
+            {
+                oldval = o;
+                newval = n;
+            }
+        }
+        public class RowChangeLog
+        {
+            public int type;//0 del, 1 add
+            public int index;
+            public ArrayList row;//if type0, store row data, else null
+            public RowChangeLog(int t, int i, ArrayList r)
+            {
+                type = t;
+                index = i;
+                row = r;
+            }
+        }
+        public class ColumnChangeLog
+        {
+            public int type;//0 del, 1 add
+            public int index;
+            public string cname;
+            public ArrayList cellsval;//if type0, store column data, else null
+            public ColumnChangeLog(int t, int i, string name, ArrayList a)
+            {
+                type = t;
+                index = i;
+                cname = name;
+                cellsval = a;
+            }
+        }
+
         DataTable g_dt = null;
         public string g_iniFile = System.IO.Directory.GetCurrentDirectory() + "\\config.ini";
         string g_currFileName = null;
@@ -61,6 +89,7 @@ namespace albatross_desktop
         //ArrayList cellValueChangeLogList = new ArrayList();//member is cellValueChangeLog
         ArrayList g_operationLogList = new ArrayList();//member is cellValueChangeLogList
         int g_operationCurrentLogIndex = -1;
+        int g_LogIndexGuard = -1;
         string g_oldValue = "";
         #endregion
 
@@ -105,6 +134,7 @@ namespace albatross_desktop
             g_bgWorker.ProgressChanged += new ProgressChangedEventHandler(bgworker_ProgressChanged);
             //g_currFileName = @"C:\Users\money_2\Desktop\风之灵配置表\2D88A4D3EE5441E940544DCF3FB0E0E2.txt";
             //processFile(g_currFileName);
+            
         }
 
         private void bgworker_DoWork(object oj, DoWorkEventArgs e)
@@ -195,7 +225,7 @@ namespace albatross_desktop
             {
                 dgview.Dock = DockStyle.Fill;
                 dgview.Visible = true;
-                g_dt = FileOpClass.readExcel(fname);
+                g_dt = FileOpClass.readExcel3(fname);
                 dgview.DataSource = null;
                 dgview.DataSource = g_dt;
                 forbidGridViewSort(null);
@@ -273,11 +303,6 @@ namespace albatross_desktop
                 e.Effect = DragDropEffects.All;
             else
                 e.Effect = DragDropEffects.None;
-        }
-
-        private void AddRowToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            dgview.Rows.Add();
         }
 
         private void ConfigToolStripMenuItem1_Click(object sender, EventArgs e)
@@ -442,11 +467,6 @@ namespace albatross_desktop
                 }
                 Log(LOGLEVEL.INFO, dgview.SelectedRows.Count.ToString() + "rows copied, row index in paste board: " + ArrayListToStr(g_copiedRowIndices));
             }
-            else if (dgview.SelectedColumns.Count > 0)
-            {
-                //copy cols
-                Log(LOGLEVEL.INFO, dgview.SelectedColumns.Count.ToString());
-            }
             else if (dgview.SelectedCells.Count > 0)
             {
                 //copy cells
@@ -474,20 +494,21 @@ namespace albatross_desktop
             if (g_copiedRowIndices.Count > 0)
             {
                 //paste copied rows
+                ArrayList tmploglist = new ArrayList();
                 for (int i = 0; i < g_copiedRowIndices.Count; i++)
                 {
                     DataRow dr = g_dt.NewRow();
+                    ArrayList tmplogvallist = new ArrayList();
                     for (int icol = 0; icol < g_dt.Columns.Count; icol++)
                     {
                         dr[g_dt.Columns[icol].ColumnName] = g_dt.Rows[int.Parse(g_copiedRowIndices[i].ToString())][g_dt.Columns[icol].ColumnName].ToString();
+                        tmplogvallist.Add(dr[g_dt.Columns[icol].ColumnName]);
                     }
                     g_dt.Rows.Add(dr);
+                    writeRowToDictList(tmploglist, 1, g_dt.Rows.Count - 1, tmplogvallist);
                 }
+                writeSyncLog(tmploglist);
                 Log(LOGLEVEL.INFO, g_copiedRowIndices.Count.ToString() + " rows pasted, row index in paste board: " + ArrayListToStr(g_copiedRowIndices));
-            }
-            else if (g_copiedColIndices.Count > 0)
-            {
-                //paste copied cols
             }
             else if (g_copiedCellIndices.Count > 0)
             {
@@ -584,74 +605,168 @@ namespace albatross_desktop
 
         private void undoOperation()
         {
-            if (g_operationCurrentLogIndex < 0)
+            if (g_operationCurrentLogIndex < 0 || (g_operationCurrentLogIndex == 0 && g_LogIndexGuard < 0))
             {
                 MessageBox.Show("no hist record!");
                 return;
             }
             ArrayList valarrlist = null;
+            valarrlist = g_operationLogList[g_operationCurrentLogIndex] as ArrayList;
             if (g_operationCurrentLogIndex == 0)
             {
-                valarrlist = g_operationLogList[0] as ArrayList;
-                for (int i = 0; i < valarrlist.Count; i++)
-                {
-                    Dictionary<int, CellValueChangeLog> valdict = valarrlist[i] as Dictionary<int, CellValueChangeLog>;
-                    foreach (KeyValuePair<int, CellValueChangeLog> kvp in valdict)
-                    {
-                        dgview.Rows[kvp.Key / 10000].Cells[kvp.Key % 10000].Value = kvp.Value.oldval;
-                    }
-                }
-                return;
+                g_LogIndexGuard = -1;
             }
-            //fill data of index
-            valarrlist = g_operationLogList[g_operationCurrentLogIndex] as ArrayList;
             for (int i = 0; i < valarrlist.Count; i++)
             {
-                Dictionary<int, CellValueChangeLog> valdict = valarrlist[i] as Dictionary<int, CellValueChangeLog>;
-                foreach (KeyValuePair<int, CellValueChangeLog> kvp in valdict)
+                Dictionary<int, Object> tmpdict = valarrlist[i] as Dictionary<int, Object>;
+                foreach (KeyValuePair<int, Object> tmpkvp in tmpdict)
                 {
-                    dgview.Rows[kvp.Key / 10000].Cells[kvp.Key % 10000].Value = kvp.Value.oldval;
+                    //cell change
+                    string tp = (tmpkvp.Value.GetType().ToString());
+                    if (tp == "albatross_desktop.MainForm+CellValueChangeLog")//cell
+                    {
+                        Dictionary<int, Object> valdict = valarrlist[i] as Dictionary<int, Object>;
+                        foreach (KeyValuePair<int, Object> kvp in valdict)
+                        {
+                            CellValueChangeLog tmpkvpval = kvp.Value as CellValueChangeLog;
+                            g_dt.Rows[kvp.Key / 10000][g_dt.Columns[kvp.Key % 10000].ColumnName] = tmpkvpval.oldval;
+                        }
+                    }
+                    else if (tp == "albatross_desktop.MainForm+RowChangeLog")//row
+                    {
+                        Dictionary<int, Object> valdict = valarrlist[i] as Dictionary<int, Object>;
+                        foreach (KeyValuePair<int, Object> kvp in valdict)
+                        {
+                            RowChangeLog tmpkvpval = kvp.Value as RowChangeLog;
+                            if (tmpkvpval.type == 0)//delete log, need add
+                            {
+                                DataRow dr = g_dt.NewRow();
+                                for (int cidex = 0; cidex < g_dt.Columns.Count; cidex++)
+                                {
+                                    dr[g_dt.Columns[cidex].ColumnName] = tmpkvpval.row[cidex];
+                                }
+                                g_dt.Rows.Add(dr);
+                            }
+                            else if (tmpkvpval.type == 1)//add log, need delete
+                            {
+                                g_dt.Rows.RemoveAt(tmpkvpval.index);
+                            }
+                        }
+                    }
+                    else if (tp == "albatross_desktop.MainForm+ColumnChangeLog")//column
+                    {
+                        Dictionary<int, Object> valdict = valarrlist[i] as Dictionary<int, Object>;
+                        foreach (KeyValuePair<int, Object> kvp in valdict)
+                        {
+                            ColumnChangeLog tmpkvpval = kvp.Value as ColumnChangeLog;
+                            if (tmpkvpval.type == 0)//delete log, need add
+                            {
+                                g_dt.Columns.Add(tmpkvpval.cname).SetOrdinal(tmpkvpval.index);
+                                for (int irdex = 0; irdex < g_dt.Rows.Count; irdex++)
+                                {
+                                    g_dt.Rows[irdex][tmpkvpval.cname] = tmpkvpval.cellsval[irdex];
+                                }
+                            }
+                            else if (tmpkvpval.type == 1)//add log, need delete
+                            {
+                                g_dt.Columns.RemoveAt(tmpkvpval.index);
+                            }
+                        }
+                    }
                 }
             }
-            g_operationCurrentLogIndex--;
-            dgview.ClearSelection();
+            if (g_operationCurrentLogIndex > 0)
+            {
+                g_operationCurrentLogIndex--;
+            }
             Log(LOGLEVEL.WARN, "undo: " + g_operationCurrentLogIndex.ToString() + "-" + g_operationLogList.Count.ToString());
+            dgview.DataSource = null;
+            dgview.DataSource = g_dt;
+            dgview.ClearSelection();
         }
 
         private void redoOperation()
         {
-            if (g_operationCurrentLogIndex < 0 || g_operationCurrentLogIndex > g_operationLogList.Count - 1)
+            if (g_operationCurrentLogIndex < 0 
+            || g_operationCurrentLogIndex > g_operationLogList.Count - 1 
+            || (g_operationCurrentLogIndex == g_operationLogList.Count - 1 && g_LogIndexGuard > g_operationLogList.Count - 1))
             {
                 MessageBox.Show("no more new record");
                 return;
             }
             ArrayList valarrlist = null;
+            valarrlist = g_operationLogList[g_operationCurrentLogIndex] as ArrayList;
             if (g_operationCurrentLogIndex == g_operationLogList.Count - 1)
             {
-                valarrlist = g_operationLogList[g_operationCurrentLogIndex] as ArrayList;
-                for (int i = 0; i < valarrlist.Count; i++)
-                {
-                    Dictionary<int, CellValueChangeLog> valdict = valarrlist[i] as Dictionary<int, CellValueChangeLog>;
-                    foreach (KeyValuePair<int, CellValueChangeLog> kvp in valdict)
-                    {
-                        dgview.Rows[kvp.Key / 10000].Cells[kvp.Key % 10000].Value = kvp.Value.newval;
-                    }
-                }
-                return;
+                g_LogIndexGuard = g_operationLogList.Count;
             }
-            //fill data of index
-            valarrlist = g_operationLogList[g_operationCurrentLogIndex] as ArrayList;
             for (int i = 0; i < valarrlist.Count; i++)
             {
-                Dictionary<int, CellValueChangeLog> valdict = valarrlist[i] as Dictionary<int, CellValueChangeLog>;
-                foreach (KeyValuePair<int, CellValueChangeLog> kvp in valdict)
+                Dictionary<int, Object> tmpdict = valarrlist[i] as Dictionary<int, Object>;
+                foreach (KeyValuePair<int, Object> tmpkvp in tmpdict)
                 {
-                    dgview.Rows[kvp.Key / 10000].Cells[kvp.Key % 10000].Value = kvp.Value.newval;
+                    //cell change
+                    string tp = (tmpkvp.Value.GetType().ToString());
+                    if (tp == "albatross_desktop.MainForm+CellValueChangeLog")
+                    {
+                        Dictionary<int, Object> valdict = valarrlist[i] as Dictionary<int, Object>;
+                        foreach (KeyValuePair<int, Object> kvp in valdict)
+                        {
+                            CellValueChangeLog tmpkvpval = kvp.Value as CellValueChangeLog;
+                            g_dt.Rows[kvp.Key / 10000][g_dt.Columns[kvp.Key % 10000].ColumnName] = tmpkvpval.newval;
+                        }
+                    }
+                    else if (tp == "albatross_desktop.MainForm+RowChangeLog")//row
+                    {
+                        Dictionary<int, Object> valdict = valarrlist[i] as Dictionary<int, Object>;
+                        foreach (KeyValuePair<int, Object> kvp in valdict)
+                        {
+                            RowChangeLog tmpkvpval = kvp.Value as RowChangeLog;
+                            if (tmpkvpval.type == 0)//delete log, need delete
+                            {
+                                g_dt.Rows.RemoveAt(tmpkvpval.index);
+                            }
+                            else if (tmpkvpval.type == 1)//add log, need add
+                            {
+                                DataRow dr = g_dt.NewRow();
+                                for (int cidex = 0; cidex < g_dt.Columns.Count; cidex++)
+                                {
+                                    dr[g_dt.Columns[cidex].ColumnName] = tmpkvpval.row[cidex];
+                                }
+                                g_dt.Rows.Add(dr);
+                            }
+                        }
+                    }
+                    else if (tp == "albatross_desktop.MainForm+ColumnChangeLog")//column
+                    {
+                        Dictionary<int, Object> valdict = valarrlist[i] as Dictionary<int, Object>;
+                        foreach (KeyValuePair<int, Object> kvp in valdict)
+                        {
+                            ColumnChangeLog tmpkvpval = kvp.Value as ColumnChangeLog;
+                            if (tmpkvpval.type == 0)//delete log, need delete
+                            {
+                                g_dt.Columns.RemoveAt(tmpkvpval.index);
+                            }
+                            else if (tmpkvpval.type == 1)//add log, need add
+                            {
+                                g_dt.Columns.Add(tmpkvpval.cname).SetOrdinal(tmpkvpval.index);
+                                for (int irdex = 0; irdex < g_dt.Rows.Count; irdex++)
+                                {
+                                    g_dt.Rows[irdex][tmpkvpval.cname] = tmpkvpval.cellsval[irdex];
+                                }
+                            }
+                        }
+                    }
                 }
             }
-            g_operationCurrentLogIndex++;
-            dgview.ClearSelection();
+            if (g_operationCurrentLogIndex < g_operationLogList.Count - 1)
+            {
+                g_operationCurrentLogIndex++;
+            }
             Log(LOGLEVEL.WARN, "redo: " + g_operationCurrentLogIndex.ToString() + "-" + g_operationLogList.Count.ToString());
+            dgview.DataSource = null;
+            dgview.DataSource = g_dt;
+            dgview.ClearSelection();
         }
 
         private void MainForm_KeyDown(object sender, KeyEventArgs e)
@@ -745,7 +860,7 @@ namespace albatross_desktop
 
         private void dgview_CellValueChanged(object sender, DataGridViewCellEventArgs e)
         {
-            Log(LOGLEVEL.WARN, "value chnaged " + e.RowIndex + " " + e.ColumnIndex + " " + dgview.Rows[e.RowIndex].Cells[e.ColumnIndex].Value.ToString());
+            //Log(LOGLEVEL.WARN, "value chnaged " + e.RowIndex + " " + e.ColumnIndex + " " + dgview.Rows[e.RowIndex].Cells[e.ColumnIndex].Value.ToString());
         }
 
         private void statusInfo_Click(object sender, EventArgs e)
@@ -758,14 +873,31 @@ namespace albatross_desktop
         {
             g_operationLogList.Add(dictlist);
             g_operationCurrentLogIndex = g_operationLogList.Count-1;
+            g_LogIndexGuard = g_operationCurrentLogIndex;
         }
 
         private void writeToDictList(ArrayList list, int rindex, int cindex, string oval, string nval)
         {
-            Dictionary<int, CellValueChangeLog> celllog = new Dictionary<int, CellValueChangeLog>();
+            Dictionary<int, Object> celllog = new Dictionary<int, Object>();
             int key = rindex*10000+cindex;
             celllog.Add(key, new CellValueChangeLog(oval, nval));
             list.Add(celllog);
+        }
+
+        private void writeRowToDictList(ArrayList list, int type, int rindex, ArrayList dr)
+        {
+            Dictionary<int, Object> rowlog = new Dictionary<int, Object>();
+            int key = rindex;
+            rowlog.Add(key, new RowChangeLog(type, rindex, dr));
+            list.Add(rowlog);
+        }
+
+        private void writeColumnToDictList(ArrayList list, int type, int cindex, string name, ArrayList vallist)
+        {
+            Dictionary<int, Object> collog = new Dictionary<int, Object>();
+            int key = cindex;
+            collog.Add(key, new ColumnChangeLog(type, cindex, name, vallist));
+            list.Add(collog);
         }
 
         private void 复制CToolStripMenuItem_Click(object sender, EventArgs e)
@@ -790,22 +922,186 @@ namespace albatross_desktop
 
         private void forbidGridViewSort(ArrayList exclude)
         {
-            if (dgview.Rows.Count < 100)
+            if (dgview.Rows.Count < 0)
             {
                 return;
             }
             for (int i = 0; i < dgview.Columns.Count; i++)
             {
-                if (exclude != null && exclude.Count>0 && exclude.IndexOf(dgview.Columns[i].Name) < 0)
+                if (exclude == null || exclude.Count<=0 || exclude.IndexOf(dgview.Columns[i].Name) >= 0)
                 {
                     dgview.Columns[i].SortMode = DataGridViewColumnSortMode.NotSortable;
                 }
             }
         }
-        /*private void Application_ApplicationExit(object sender, EventArgs e)
+
+        private void 添加列ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            CloseExcelApplication();
-            swWriter.Close();
-        }*/
+            if (dgview.SelectedCells.Count != 1)
+            {
+                MessageBox.Show("should select only one cell to specify the only column!");
+                return;
+            }
+            //copy cols
+            g_copiedColIndices.Clear();
+            for (int i = 0; i < dgview.SelectedCells.Count; i++)
+            {
+                g_copiedColIndices.Add(dgview.SelectedCells[i].ColumnIndex);
+            }
+            Log(LOGLEVEL.INFO, dgview.SelectedCells.Count.ToString() + "cols copied, col index in paste board: " + ArrayListToStr(g_copiedColIndices));
+            dgview.ClearSelection();
+        }
+
+        private string strValue;
+        public string StrValue
+        {
+            set
+            {
+                strValue = value;
+            }
+        }
+
+        private void 粘贴列ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            NotifyTextForm ntf = new NotifyTextForm(this);
+            ntf.ShowDialog();
+            //check colname
+            for (int i = 0; i < g_dt.Columns.Count; i++)
+            {
+                if (strValue == g_dt.Columns[i].ColumnName)
+                {
+                    MessageBox.Show("colname '"+ strValue +"' exists!");
+                    return;
+                }
+            }
+            //add column
+            //g_dt.Columns.Add(strValue).SetOrdinal(int.Parse(g_copiedColIndices[0].ToString()));
+            g_dt.Columns.Add(strValue);
+            //log
+            ArrayList tmploglist = new ArrayList();
+            ArrayList tmpvallist = new ArrayList(); 
+            for (int i = 0; i < g_dt.Rows.Count; i++)
+            {
+                g_dt.Rows[i][strValue] = g_dt.Rows[i][g_dt.Columns[int.Parse(g_copiedColIndices[0].ToString())].ColumnName];
+                tmpvallist.Add(g_dt.Rows[i][strValue]);
+            }
+            //writeColumnToDictList(tmploglist, 1, int.Parse(g_copiedColIndices[0].ToString()), strValue, tmpvallist);
+            writeColumnToDictList(tmploglist, 1, g_dt.Columns.Count-1, strValue, tmpvallist);
+            writeSyncLog(tmploglist);
+
+            dgview.DataSource = null;
+            dgview.DataSource = g_dt;
+        }
+
+        private void 插入列ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (dgview.SelectedCells.Count != 1)
+            {
+                MessageBox.Show("should select only one cell to specify the only column!");
+                return;
+            }
+            int pos = dgview.SelectedCells[0].ColumnIndex;
+            NotifyTextForm ntf = new NotifyTextForm(this);
+            ntf.ShowDialog();
+            //check colname
+            for (int i = 0; i < g_dt.Columns.Count; i++)
+            {
+                if (strValue == g_dt.Columns[i].ColumnName)
+                {
+                    MessageBox.Show("colname '" + strValue + "' exists!");
+                    return;
+                }
+            }
+            //add column
+            g_dt.Columns.Add(strValue).SetOrdinal(pos);
+            /*for (int i = 0; i < g_dt.Rows.Count; i++)
+            {
+                g_dt.Rows[i][strValue] = g_dt.Rows[i][g_dt.Columns[1 + int.Parse(g_copiedColIndices[0].ToString())].ColumnName];
+            }*/
+            //log
+            ArrayList tmploglist = new ArrayList();
+            writeColumnToDictList(tmploglist, 1, pos, strValue, null);
+            writeSyncLog(tmploglist);
+
+            dgview.DataSource = null;
+            dgview.DataSource = g_dt;
+            dgview.ClearSelection();
+        }
+
+        private void 插入行ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (dgview.SelectedRows.Count != 1)
+            {
+                MessageBox.Show("should select only one row!");
+                return;
+            }
+            //add row
+            DataRow dr = g_dt.NewRow();
+            g_dt.Rows.InsertAt(dr, dgview.SelectedRows[0].Index);
+            
+            ArrayList tmploglist = new ArrayList();
+            writeRowToDictList(tmploglist, 1, dgview.SelectedRows[0].Index, null);
+            writeSyncLog(tmploglist);
+
+            dgview.DataSource = null;
+            dgview.DataSource = g_dt;
+            dgview.ClearSelection();
+        }
+
+        private void 删除列ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (dgview.SelectedCells.Count != 1)
+            {
+                MessageBox.Show("should select only one cell to specify the only column!");
+                return;
+            }
+            //log
+            ArrayList tmploglist = new ArrayList();
+            ArrayList tmpvallist = new ArrayList();
+            for (int i = 0; i < g_dt.Rows.Count; i++)
+            {
+                tmpvallist.Add(g_dt.Rows[i][dgview.Columns[dgview.SelectedCells[0].ColumnIndex].HeaderText].ToString());
+            }
+            writeColumnToDictList(tmploglist, 0, dgview.SelectedCells[0].ColumnIndex, dgview.Columns[dgview.SelectedCells[0].ColumnIndex].HeaderText, tmpvallist);
+            writeSyncLog(tmploglist);
+            //del cols
+            g_dt.Columns.RemoveAt(dgview.SelectedCells[0].ColumnIndex);
+            dgview.ClearSelection();
+        }
+
+        private void 删除行ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (dgview.SelectedRows.Count <= 0)
+            {
+                MessageBox.Show("should select row!");
+                return;
+            }
+            //get row indices
+            ArrayList indexlist = new ArrayList();
+            for (int i = 0; i < dgview.SelectedRows.Count; i++)
+            {
+                indexlist.Add(dgview.SelectedRows[i].Index);
+            }
+            ArrayList tmploglist = new ArrayList();
+            //log, remove rows
+            for (int i = g_dt.Rows.Count-1; i >= 0; i--)
+            {
+                if (indexlist.IndexOf(i) >= 0)
+                {
+                    ArrayList tmplogvallist = new ArrayList();
+                    for (int icdex = 0; icdex < g_dt.Columns.Count; icdex++)
+                    {
+                        tmplogvallist.Add(g_dt.Rows[i][g_dt.Columns[icdex].ColumnName]);
+                    }
+                    writeRowToDictList(tmploglist, 0, i, tmplogvallist);
+                    g_dt.Rows.RemoveAt(i);
+                }
+            }
+            writeSyncLog(tmploglist);
+            dgview.DataSource = null;
+            dgview.DataSource = g_dt;
+            dgview.ClearSelection();
+        }
+
     }
 }

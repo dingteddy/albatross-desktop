@@ -107,74 +107,8 @@ namespace albatross_desktop
 
         public static DataTable readExcel2(string fname)
         {
-            DataTable dt = new DataTable(Path.GetFileName(fname));
-            string connStr = "";
-            string fileType = System.IO.Path.GetExtension(fname);
-            if (string.IsNullOrEmpty(fileType))
-            {
-                return null;
-            }
+            DataTable dt = readExcel(fname);
 
-            if (fileType == ".xls")
-                connStr = "Provider=Microsoft.Jet.OLEDB.4.0;" + "Data Source=" + fname + ";" + ";Extended Properties=\"Excel 8.0;HDR=YES;IMEX=1\"";
-            else
-                connStr = "Provider=Microsoft.ACE.OLEDB.12.0;" + "Data Source=" + fname + ";" + ";Extended Properties=\"Excel 12.0;HDR=YES;IMEX=1\"";
-            string sql_F = "Select ID,DEFAULT_MON_UNIT FROM [{0}]";
-
-            OleDbConnection conn = null;
-            OleDbDataAdapter da = null;
-            DataTable dtSheetName = null;
-            try
-            {
-                // 初始化连接，并打开
-                conn = new OleDbConnection(connStr);
-                conn.Open();
-                // 获取数据源的表定义元数据                        
-                string SheetName = "";
-                dtSheetName = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, new object[] { null, null, null, "TABLE" });
-                // 初始化适配器
-                da = new OleDbDataAdapter();
-                for (int i = 0; i < dtSheetName.Rows.Count; i++)
-                {
-                    SheetName = (string)dtSheetName.Rows[i]["TABLE_NAME"];
-                    if (SheetName.Contains("$") && !SheetName.Replace("'", "").EndsWith("$"))
-                    {
-                        continue;
-                    }
-                    da.SelectCommand = new OleDbCommand(String.Format(sql_F, SheetName), conn);
-                    DataSet dsItem = new DataSet();
-                    da.Fill(dsItem, SheetName);
-                    dt = dsItem.Tables[0].Copy();
-                    break;
-                }
-                int tt = 0;
-                while (true)
-                {
-                    if (dt.Columns[tt].ColumnName != "DEFAULT_MON_UNIT" && dt.Columns[tt].ColumnName != "ID")
-                    {
-                        dt.Columns.Remove(dt.Columns[tt].ColumnName);
-                    }
-                    else
-                    {
-                        tt++;
-                    }
-                    if (dt.Columns.Count == 2) break;
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.ToString());
-            }
-            finally
-            {
-                // 关闭连接
-                if (conn.State == ConnectionState.Open)
-                {
-                    conn.Close();
-                    da.Dispose();
-                    conn.Dispose();
-                }
-            }
             DataTable dt2 = new DataTable();
             dt2.Columns.Add("id");
             dt2.Columns.Add("type1");
@@ -214,6 +148,36 @@ namespace albatross_desktop
                         dr["y"] = tmpstrarr2[2];
                     }
                     dt2.Rows.Add(dr);
+                }
+            }
+            return dt2;
+        }
+
+        public static DataTable readExcel3(string fname)
+        {
+            DataTable dt = readExcel(fname);
+
+            DataTable dt2 = new DataTable();
+            dt2.Columns.Add("id");
+            dt2.Columns.Add("type1");
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                string tmpstr = dt.Rows[i]["MON_HERO_UNIT"].ToString();
+                string[] tmpstrarr = tmpstr.Split('/');
+                for (int j = 0; j < tmpstrarr.Count(); j++)
+                {
+                    if (tmpstrarr[j].Length <= 0)
+                    {
+                        continue;
+                    }
+                    string[] tmpstrarr2 = tmpstrarr[j].Split(',');
+                    for (int k = 0; k < tmpstrarr2.Count(); k++)
+                    {
+                        DataRow dr = dt2.NewRow();
+                        dr["id"] = dt.Rows[i]["ID"];
+                        dr["type1"] = tmpstrarr2[k];
+                        dt2.Rows.Add(dr);
+                    }
                 }
             }
             return dt2;
