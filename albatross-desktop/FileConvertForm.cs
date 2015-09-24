@@ -159,10 +159,11 @@ namespace albatross_desktop
             {
                 FileOpClass.saveExcel07(srcPath + "\\target\\" + name + "." + target, dt);
             }
-            /*else if (target.Equals("txt"))
+            else if (target.Equals("txt"))
             {
-                FileOpClass.save(srcPath + "\\target\\" + fname + "." + target, dt);
-            }*/
+                //FileOpClass.save(srcPath + "\\target\\" + fname + "." + target, dt);
+                MessageBox.Show("not supported!");
+            }
             return 0;
         }
 

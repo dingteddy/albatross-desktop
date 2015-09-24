@@ -34,6 +34,7 @@
             // 
             // webBrowser1
             // 
+            this.webBrowser1.AllowWebBrowserDrop = false;
             this.webBrowser1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.webBrowser1.Location = new System.Drawing.Point(0, 0);
             this.webBrowser1.MinimumSize = new System.Drawing.Size(20, 20);
@@ -41,9 +42,11 @@
             this.webBrowser1.Size = new System.Drawing.Size(687, 489);
             this.webBrowser1.TabIndex = 9;
             this.webBrowser1.Visible = false;
+            this.webBrowser1.DocumentCompleted += new System.Windows.Forms.WebBrowserDocumentCompletedEventHandler(this.webBrowser1_DocumentCompleted);
             // 
             // WebBrowserForm
             // 
+            this.AllowDrop = true;
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(687, 489);
@@ -51,6 +54,8 @@
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "WebBrowserForm";
             this.Text = "data browser";
+            this.DragDrop += new System.Windows.Forms.DragEventHandler(this.wbf_DragDrop);
+            this.DragEnter += new System.Windows.Forms.DragEventHandler(this.wbf_DragEnter);
             this.ResumeLayout(false);
 
         }

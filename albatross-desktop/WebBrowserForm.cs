@@ -22,6 +22,24 @@ namespace albatross_desktop
             InitializeComponent();
         }
 
+        private void wbf_DragDrop(object sender, DragEventArgs e)
+        {
+            //fixme!!! if multi files
+            string fname = null;
+            string[] s = (string[])e.Data.GetData(DataFormats.FileDrop, false);
+            fname = s[0];
+            openExcel(fname);
+            this.WindowState = FormWindowState.Maximized;
+        }
+
+        private void wbf_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                e.Effect = DragDropEffects.All;
+            else
+                e.Effect = DragDropEffects.None;
+        }
+
         #region "webbrowser"
         private void openExcel(string sFileName)
         {
@@ -30,7 +48,6 @@ namespace albatross_desktop
             //string strFileName = @"d:\test.xlsx";
             Object refmissing = System.Reflection.Missing.Value;
             webBrowser1.Navigate(sFileName);
-            object axWebBrowser = webBrowser1.ActiveXInstance;
         }
 
         private void webBrowser1_DocumentCompleted(object sender, WebBrowserDocumentCompletedEventArgs e)
@@ -40,8 +57,8 @@ namespace albatross_desktop
             {
                 Object refmissing = System.Reflection.Missing.Value;
                 object[] args = new object[4];
-                //args[0] = SHDocVw.OLECMDID.OLECMDID_HIDETOOLBARS;
-                args[0] = refmissing;
+                args[0] = SHDocVw.OLECMDID.OLECMDID_HIDETOOLBARS;
+                //args[0] = refmissing;
                 args[1] = SHDocVw.OLECMDEXECOPT.OLECMDEXECOPT_DONTPROMPTUSER;
                 //此处SHDocVw需要添加此引用 c:/windows/system32/SHDocVw.dll
                 args[2] = refmissing;
@@ -58,7 +75,7 @@ namespace albatross_desktop
                 Excel.Worksheet ws = g_wbb.Worksheets[1] as Excel.Worksheet;
                 ws.Cells.Font.Name = "Verdana";
                 ws.Cells.Font.Size = 14;
-                ws.Cells.Font.Bold = true;
+                ws.Cells.Font.Bold = false;
                 Excel.Range range = ws.Cells;
                 Excel.Range oCell = range[10, 10] as Excel.Range;
                 oCell.Value2 = "你好";

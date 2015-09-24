@@ -34,5 +34,14 @@ namespace albatross_desktop
             fcf.ShowDialog();
             this.Show();
         }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            WebBrowserForm wbf = new WebBrowserForm();
+            this.Hide();
+            wbf.WindowState = FormWindowState.Maximized;
+            wbf.ShowDialog();
+            this.Show();
+        }
     }
 }
