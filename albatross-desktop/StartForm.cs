@@ -43,5 +43,14 @@ namespace albatross_desktop
             wbf.ShowDialog();
             this.Show();
         }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            DiffMergeForm dmf = new DiffMergeForm(null);
+            this.Hide();
+            dmf.WindowState = FormWindowState.Maximized;
+            dmf.ShowDialog();
+            this.Show();
+        }
     }
 }

@@ -85,6 +85,12 @@
     <Compile Include="ConfigForm.Designer.cs">
       <DependentUpon>ConfigForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="DiffMergeForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DiffMergeForm.Designer.cs">
+      <DependentUpon>DiffMergeForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="FileConvertForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -126,6 +132,9 @@
     </Compile>
     <EmbeddedResource Include="ConfigForm.resx">
       <DependentUpon>ConfigForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="DiffMergeForm.resx">
+      <DependentUpon>DiffMergeForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="FileConvertForm.resx">
       <DependentUpon>FileConvertForm.cs</DependentUpon>

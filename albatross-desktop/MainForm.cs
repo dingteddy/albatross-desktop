@@ -19,6 +19,7 @@ using System.Collections;
 using System.Data.OleDb;
 using MySql.Data;
 using MySql.Data.MySqlClient;
+using System.Data.SqlClient;
 
 namespace albatross_desktop
 {
@@ -115,12 +116,13 @@ namespace albatross_desktop
                 mycon.Open();
                 //add sub menu
                 ArrayList tmplist = new ArrayList();
-                getDbData("show tables;", tmplist, null);
+                getDbData("show tables;", tmplist);
                 foreach (ArrayList row in tmplist)
                 {
                     foreach (string col in row)
                     {
                         dbDToolStripMenuItem.DropDownItems.Add(col, null, dbMenuClicked);
+                        uploadDBToolStripMenuItem.DropDownItems.Add(col, null, dbUploadMenuClicked);
                     }
                 }
             } 
@@ -134,15 +136,15 @@ namespace albatross_desktop
             g_bgWorker.ProgressChanged += new ProgressChangedEventHandler(bgworker_ProgressChanged);
             //g_currFileName = @"C:\Users\money_2\Desktop\风之灵配置表\2D88A4D3EE5441E940544DCF3FB0E0E2.txt";
             //processFile(g_currFileName);
-            
         }
 
         private void bgworker_DoWork(object oj, DoWorkEventArgs e)
         {
             ArrayList tmplist = new ArrayList();
             ArrayList tmpcolnamelist = new ArrayList();
-            getDbData("select * from " + e.Argument.ToString(), tmplist, tmpcolnamelist);
-            g_dt = readDbData(g_bgWorker, tmplist, tmpcolnamelist);
+            getDbFields(e.Argument.ToString(), tmpcolnamelist);
+            getDbData("select * from " + e.Argument.ToString(), tmplist);
+            g_dt = readDbData(g_bgWorker, tmplist, tmpcolnamelist, e.Argument.ToString());
         }
 
         private void bgworker_ProgressChanged(object sender, ProgressChangedEventArgs e)
@@ -156,9 +158,18 @@ namespace albatross_desktop
             toolStripProgressBar1.Value = 100;
             dgview.DataSource = null;
             dgview.DataSource = g_dt;
-            forbidGridViewSort(null);
+            FileOpClass.forbidGridViewSort(dgview, null);
             dgview.Dock = DockStyle.Fill;
             dgview.Visible = true;
+            //set comments
+            ArrayList tmpcolinfolist = new ArrayList();
+            getDbFields(g_dt.TableName, tmpcolinfolist);
+            for (int i = 0; i < tmpcolinfolist.Count; i++)
+            {
+                ArrayList tmplist = tmpcolinfolist[i] as ArrayList;
+                dgview.Columns[i].HeaderCell.ToolTipText = tmplist[8].ToString();//comment
+            }
+            dgview.TopLeftHeaderCell.ToolTipText = getDbTbComment(g_dt.TableName);//table comment
         }
 
         void dbMenuClicked(object sender, EventArgs e)
@@ -166,7 +177,30 @@ namespace albatross_desktop
             this.WindowState = FormWindowState.Maximized;
             g_bgWorker.DoWork += new DoWorkEventHandler(bgworker_DoWork);
             ToolStripDropDownItem item = sender as ToolStripDropDownItem;
+            this.Text = item.Text;
             g_bgWorker.RunWorkerAsync(item.Text);
+        }
+
+        void dbUploadMenuClicked(object sender, EventArgs e)
+        {
+            ToolStripDropDownItem item = sender as ToolStripDropDownItem;
+            ClearLog();
+            if (null != mycon)
+            {
+                if (uploadDbData(g_dt, item.Text))
+                {
+                    Log(LOGLEVEL.INFO, "保存表格数据到数据库表"+item.Text);
+                    return;
+                }
+                else
+                {
+                    Log(LOGLEVEL.INFO, "保存表格数据到数据库表"+item.Text +"，数据有误。");
+                }
+            }
+            else
+            {
+                Log(LOGLEVEL.INFO, "保存表格数据到数据库表"+item.Text + "，无法连接到数据库。");
+            }
         }
 
         #region "app updater"
@@ -202,7 +236,6 @@ namespace albatross_desktop
             if (opendlg.ShowDialog() == DialogResult.OK)
             {
                 string sFileName = opendlg.FileName;
-                g_currFileName = sFileName;
                 processFile(sFileName);
                 this.WindowState = FormWindowState.Maximized;
             }
@@ -210,6 +243,8 @@ namespace albatross_desktop
 
         private int processFile(string fname)
         {
+            g_currFileName = fname;
+            this.Text = fname;
             string ext = Path.GetExtension(fname);
             string name = Path.GetFileName(fname);
             if (ext.Equals(".xml"))
@@ -219,16 +254,31 @@ namespace albatross_desktop
                 g_dt = FileOpClass.readXml(fname);
                 dgview.DataSource = null;
                 dgview.DataSource = g_dt;
-                forbidGridViewSort(null);
+                FileOpClass.forbidGridViewSort(dgview, null);
             }
             else if (ext.Equals(".xls") || ext.Equals(".xlsx"))
             {
                 dgview.Dock = DockStyle.Fill;
                 dgview.Visible = true;
-                g_dt = FileOpClass.readExcel3(fname);
+                DataTable tmpdt = FileOpClass.readExcel(fname);
+                ArrayList tiplist = new ArrayList();
+                ArrayList tbtip = new ArrayList();
+                if (!FileOpClass.rangeDt(tmpdt, ref g_dt, ref tiplist, ref tbtip, g_iniFile))
+                {
+                    return -1;
+                }
                 dgview.DataSource = null;
                 dgview.DataSource = g_dt;
-                forbidGridViewSort(null);
+                FileOpClass.forbidGridViewSort(dgview, null);
+                //add tool tips
+                for (int i = 0; i < tiplist.Count; i++)
+                {
+                    dgview.Columns[i].HeaderCell.ToolTipText = tiplist[i].ToString();//comment
+                }
+                if (tbtip.Count > 0)
+                {
+                    dgview.TopLeftHeaderCell.ToolTipText = tbtip[0].ToString();//table comment
+                }
             }
             else if (ext.Equals(".txt"))
             {
@@ -237,7 +287,7 @@ namespace albatross_desktop
                 g_dt = FileOpClass.readJson(fname);
                 dgview.DataSource = null;
                 dgview.DataSource = g_dt;
-                forbidGridViewSort(null);
+                FileOpClass.forbidGridViewSort(dgview, null);
             }
             return 0;
         }
@@ -292,7 +342,6 @@ namespace albatross_desktop
             string fname = null;
             string[] s = (string[])e.Data.GetData(DataFormats.FileDrop, false);
             fname = s[0];
-            g_currFileName = fname;
             processFile(fname);
             this.WindowState = FormWindowState.Maximized;
         }
@@ -379,13 +428,13 @@ namespace albatross_desktop
         }
 
         #region "DB"
-        private void getDbData(string sql, ArrayList list, ArrayList colnamelist)
+        private void getDbFields(string tb, ArrayList colinfolist)
         {
+            string sql = "SHOW FULL COLUMNS FROM " + tb;
             MySqlCommand mycmd = new MySqlCommand(sql, mycon);
             MySqlDataReader reader = mycmd.ExecuteReader();
             try
             {
-                bool getcolnames = false;
                 while (reader.Read())
                 {
                     if (reader.HasRows)
@@ -401,13 +450,8 @@ namespace albatross_desktop
                             {
                                 sublist.Add(reader.GetString(i));
                             }
-                            if (!getcolnames && colnamelist != null)
-                            {
-                                colnamelist.Add(reader.GetName(i));
-                            }
                         }
-                        list.Add(sublist);
-                        getcolnames = true;
+                        colinfolist.Add(sublist);
                     }
                 }
             }
@@ -421,13 +465,81 @@ namespace albatross_desktop
             }
         }
 
-        private DataTable readDbData(object o, ArrayList datalist, ArrayList colnamelist)
+        private string getDbTbComment(string tb)
+        {
+            string sql = "SHOW CREATE TABLE " + tb;
+            MySqlCommand mycmd = new MySqlCommand(sql, mycon);
+            MySqlDataReader reader = mycmd.ExecuteReader();
+            try
+            {
+                while (reader.Read())
+                {
+                    if (reader.HasRows)
+                    {
+                        if (reader.FieldCount >= 2)
+                        {
+                            string tmpstr = reader.GetString(1);
+                            tmpstr = tmpstr.Substring(tmpstr.IndexOf("COMMENT=") + 8);
+                            return tmpstr;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("查询失败: " + ex.ToString());
+            }
+            finally
+            {
+                reader.Close();
+            }
+            return "";
+        }
+
+        private void getDbData(string sql, ArrayList list)
+        {
+            MySqlCommand mycmd = new MySqlCommand(sql, mycon);
+            MySqlDataReader reader = mycmd.ExecuteReader();
+            try
+            {
+                while (reader.Read())
+                {
+                    if (reader.HasRows)
+                    {
+                        ArrayList sublist = new ArrayList();
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            if (reader.IsDBNull(i))
+                            {
+                                sublist.Add("");
+                            }
+                            else
+                            {
+                                sublist.Add(reader.GetString(i));
+                            }
+                        }
+                        list.Add(sublist);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("查询失败: " + ex.ToString());
+            }
+            finally
+            {
+                reader.Close();
+            }
+        }
+
+        private DataTable readDbData(object o, ArrayList datalist, ArrayList colnamelist, string dtname)
         {
             BackgroundWorker worker = o as BackgroundWorker;
-            DataTable dt = new DataTable();
+            DataTable dt = new DataTable(dtname);
             foreach (var colname in colnamelist)
             {
-                dt.Columns.Add(colname.ToString());
+                ArrayList tmpcolnamearr = colname as ArrayList;
+                dt.Columns.Add(tmpcolnamearr[0].ToString());
             }
             int prog = 0;
             int zprog = 0;
@@ -445,13 +557,159 @@ namespace albatross_desktop
                 ArrayList tmplist = data as ArrayList;
                 foreach (var attr in tmplist)
                 {
-                    dr[colnamelist[i].ToString()] = attr.ToString();
+                    ArrayList tmpcolnamelist = colnamelist[i] as ArrayList;
+                    dr[tmpcolnamelist[0].ToString()] = attr.ToString();
                     i++;
                 }
                 dt.Rows.Add(dr);
             }
             return dt;
         }
+
+        private bool checkType(DataRow dr, int colindex, ArrayList collist)
+        {
+            if (colindex == 1)//type
+            {
+                if (collist[colindex].ToString().IndexOf("int") >= 0)
+                {
+                    int tmpi = 0;
+                    if (!int.TryParse(dr[collist[colindex].ToString()].ToString(), out tmpi))
+                    {
+                        return false;
+                    }
+                }
+            }
+            else if (colindex == 2)//null
+            {
+                if (collist[colindex].ToString() == "YES")
+                {
+                    if (dr[collist[colindex].ToString()].ToString().Length <= 0)
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        private bool checkKey(DataTable dt, ArrayList colinfolist)
+        {
+            //find key cols
+            ArrayList keynamelist = new ArrayList();
+            for (int i = 0; i < colinfolist.Count; i++)
+            {
+                ArrayList tmp = colinfolist[i] as ArrayList;
+                if (tmp[4].ToString().Equals("PRI", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    keynamelist.Add(tmp[0]);
+                }
+            }
+            //check keys
+            for (int irow = 0; irow < dt.Rows.Count; irow++)
+            {
+                for (int isubrow = irow+1; isubrow < dt.Rows.Count; isubrow++)
+                {
+                    bool sameitem = true;
+                    for (int icolindex = 0; icolindex < keynamelist.Count; icolindex++)
+                    {
+                        if (dt.Rows[irow][keynamelist[icolindex].ToString()] != dt.Rows[isubrow][keynamelist[icolindex].ToString()])
+                        {
+                            sameitem = false;
+                            break;
+                        }
+                    }
+                    if (sameitem)
+                    {
+                        return false;
+                    }
+                }
+            }
+                return true;
+        }
+
+        private bool checkArch(DataTable dt, ArrayList colinfolist)
+        {
+            if (dt.Columns.Count > colinfolist.Count)
+            {
+                Log(LOGLEVEL.ERROR, "数据字段多于数据库表字段，请先检查数据库。");
+                return false;
+            }
+            if (dt.Columns.Count < colinfolist.Count)
+            {
+                Log(LOGLEVEL.WARN, "数据字段少于数据库表字段，仅部分数据会被更新，建议先检查数据库。");
+            }
+            ArrayList colnames = new ArrayList();
+            for (int i = 0; i < colinfolist.Count; i++)
+            {
+                ArrayList tmpa = colinfolist[i] as ArrayList;
+                colnames.Add(tmpa[0].ToString());
+            }
+                
+            for (int i = 0; i < dt.Columns.Count; i++)
+            {
+                if (!colnames.Contains(dt.Columns[i].ColumnName))
+                {
+                    Log(LOGLEVEL.ERROR, "数据字段与指定的数据库字段不匹配，请确认正确选择了要上传的数据库及同步了结构。");
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private bool uploadDbData(DataTable dt, string tb)
+        {
+            ArrayList colinfolist = new ArrayList();
+            getDbFields(tb, colinfolist);
+            //check arch
+            if (!checkArch(dt, colinfolist))
+            {
+                return false;
+            }
+            //check keys, should check arch first
+            if (!checkKey(dt, colinfolist))
+            {
+                return false;
+            }
+            //check data of datatable according to db fields
+            for (int irow = 0; irow < dt.Rows.Count; irow++)
+            {
+                for (int icol = 0; icol < colinfolist.Count; icol++)
+                {
+                    if (icol != 1 && icol != 2)
+                    {
+                        continue;
+                    }
+                    //type
+                    if (!checkType(dt.Rows[irow], icol, colinfolist))
+                    {
+                        return false;
+                    }
+                }
+            }
+            //backup old data from db
+            ArrayList datalist = new ArrayList();
+            getDbData("select * from " + tb, datalist);
+            //upload datatable to db
+            MySqlCommand mycmd = new MySqlCommand("delete from "+tb, mycon);
+            mycmd.ExecuteNonQuery();
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                string sql = "insert into " + tb + " set ";
+                for (int j = 0; j <colinfolist.Count; j++)
+                {
+                    ArrayList tmpcollist = colinfolist[j] as ArrayList;
+                    string tmpcolname = tmpcollist[0].ToString();
+                    sql += tmpcolname + "='" + dt.Rows[i][tmpcolname].ToString() + "'";
+                    sql += ",";
+                }
+                sql = sql.Substring(0, sql.Length - 1);
+                MySqlCommand mycmdtmp = new MySqlCommand(sql, mycon);
+                mycmdtmp.ExecuteNonQuery();
+            }
+            return true;
+        }
+
         #endregion
 
         private void copyOperation()
@@ -829,15 +1087,35 @@ namespace albatross_desktop
         private void saveXMLToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ClearLog();
-            FileOpClass.saveXml(Config.ReadIniKey("path", "xml", g_iniFile) + "\\" + Path.GetFileNameWithoutExtension(g_currFileName) + ".xml", g_dt);
-            Log(LOGLEVEL.INFO, "按下了Control + Shift + X来保存表格数据到指定目录的Xml。");
+            string dirstr = Config.ReadIniKey("path", "xml", g_iniFile);
+            if (dirstr.Length > 0)
+            {
+                FileInfo fi = new FileInfo(dirstr);
+                if ((fi.Attributes & FileAttributes.Directory) != 0)
+                {
+                    FileOpClass.saveXml(dirstr + "\\" + Path.GetFileNameWithoutExtension(g_currFileName) + ".xml", g_dt);
+                    Log(LOGLEVEL.INFO, "按下了Control + Shift + X来保存表格数据到指定目录的Xml。");
+                    return;
+                }
+            }
+            Log(LOGLEVEL.INFO, "按下了Control + Shift + X来保存，未指定保存路径，请到配置中设置。");
         }
 
         private void saveEXCELToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ClearLog();
-            FileOpClass.saveExcel07(Config.ReadIniKey("path", "excel", g_iniFile) + "\\" + Path.GetFileNameWithoutExtension(g_currFileName) + ".xlsx", g_dt);
-            Log(LOGLEVEL.INFO, "按下了Control + Shift + E来保存表格数据到指定目录的Excel。");
+            string dirstr = Config.ReadIniKey("path", "excel", g_iniFile);
+            if (dirstr.Length > 0)
+            {
+                FileInfo fi = new FileInfo(dirstr);
+                if ((fi.Attributes & FileAttributes.Directory) != 0)
+                {
+                    FileOpClass.saveExcel07(dirstr + "\\" + Path.GetFileNameWithoutExtension(g_currFileName) + ".xlsx", g_dt);
+                    Log(LOGLEVEL.INFO, "按下了Control + Shift + E来保存表格数据到指定目录的Excel。");
+                    return;
+                }
+            }
+            Log(LOGLEVEL.INFO, "按下了Control + Shift + E来保存，未指定保存路径，请到配置中设置。");
         }
 
         private void dgview_CellBeginEdit(object sender, DataGridViewCellCancelEventArgs e)
@@ -918,21 +1196,6 @@ namespace albatross_desktop
         private void 重做ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             redoOperation();
-        }
-
-        private void forbidGridViewSort(ArrayList exclude)
-        {
-            if (dgview.Rows.Count < 0)
-            {
-                return;
-            }
-            for (int i = 0; i < dgview.Columns.Count; i++)
-            {
-                if (exclude == null || exclude.Count<=0 || exclude.IndexOf(dgview.Columns[i].Name) >= 0)
-                {
-                    dgview.Columns[i].SortMode = DataGridViewColumnSortMode.NotSortable;
-                }
-            }
         }
 
         private void 添加列ToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1102,6 +1365,6 @@ namespace albatross_desktop
             dgview.DataSource = g_dt;
             dgview.ClearSelection();
         }
-
+        
     }
 }
