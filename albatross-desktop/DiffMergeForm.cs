@@ -180,6 +180,7 @@ namespace albatross_desktop
                     FileOpClass.forbidGridViewSort(viewer, null);
                 }
             }
+            
             return 0;
         }
 

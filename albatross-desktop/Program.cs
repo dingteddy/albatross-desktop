@@ -16,6 +16,8 @@ namespace albatross_desktop
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            Application.Run(new DiffMergeForm(args));
+            return;
             //Application.Run(new StartForm());
             /*args = new string[2];
             args[0] = @"E:\ThreeKingdoms\doc\静态数据表\type_copys_main.xlsx";
